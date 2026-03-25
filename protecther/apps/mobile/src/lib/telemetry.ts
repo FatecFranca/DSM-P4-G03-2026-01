@@ -1,7 +1,11 @@
 export type MobileTelemetryEvent =
   | "location_stream_started"
+  | "location_stream_stopped"
   | "location_point_sent"
   | "location_stream_failed"
+  | "location_queue_enqueued"
+  | "location_queue_flushed"
+  | "location_queue_depth"
   | "alert_acknowledged";
 
 /** Sem PII: apenas códigos/ids já expostos ao cliente. */

@@ -1,14 +1,11 @@
 import type { FastifyBaseLogger } from "fastify";
-import { isNonProductionNodeEnv } from "../../config/env.js";
-import { createDevAlertEscalationNotifier } from "./devLogger.js";
-import { createProductionStubAlertEscalationNotifier } from "./productionStub.js";
-import type { AlertEscalationNotifier } from "./types.js";
+import { createPushProvider } from "../push/factory.js";
+import { createAlertContactsPushOrchestrator } from "./contactsPushOrchestrator.js";
+import type { AlertContactsPushNotifier } from "./types.js";
 
-export function createAlertEscalationNotifier(
+export function createAlertContactsPushNotifier(
   log: FastifyBaseLogger,
-): AlertEscalationNotifier {
-  if (isNonProductionNodeEnv()) {
-    return createDevAlertEscalationNotifier(log);
-  }
-  return createProductionStubAlertEscalationNotifier(log);
+): AlertContactsPushNotifier {
+  const push = createPushProvider(log);
+  return createAlertContactsPushOrchestrator(log, push);
 }

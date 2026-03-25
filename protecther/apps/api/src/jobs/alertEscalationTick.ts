@@ -8,23 +8,13 @@ import {
   emergencyContacts,
 } from "../db/schema.js";
 import { logAlertTelemetry } from "../lib/telemetry.js";
-import type { AlertEscalationNotifier } from "../services/alertNotifications/types.js";
+import type { AlertContactsPushNotifier } from "../services/alertNotifications/types.js";
+import {
+  isAlertDueForEscalation,
+  readEscalationConfigFromEnv,
+} from "./escalationRules.js";
 
 const DEFAULT_INTERVAL_MS = 60_000;
-const DEFAULT_FIRST_NO_ACK_MINUTES = 5;
-const DEFAULT_REPEAT_MINUTES = 5;
-
-function readMinutesEnv(key: string, fallback: number): number {
-  const raw = process.env[key];
-  if (raw === undefined || raw === "") {
-    return fallback;
-  }
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 1) {
-    return fallback;
-  }
-  return n;
-}
 
 function readIntervalMs(): number {
   const raw = process.env.ALERT_ESCALATION_INTERVAL_MS;
@@ -40,19 +30,10 @@ function readIntervalMs(): number {
 
 export async function runAlertEscalationTick(
   log: FastifyBaseLogger,
-  notifier: AlertEscalationNotifier,
+  notifier: AlertContactsPushNotifier,
 ): Promise<void> {
   const now = Date.now();
-  const firstMs =
-    readMinutesEnv(
-      "ALERT_ESCALATION_NO_ACK_MINUTES",
-      DEFAULT_FIRST_NO_ACK_MINUTES,
-    ) * 60_000;
-  const repeatMs =
-    readMinutesEnv("ALERT_ESCALATION_REPEAT_MINUTES", DEFAULT_REPEAT_MINUTES) *
-    60_000;
-  const firstCutoff = now - firstMs;
-  const repeatCutoff = now - repeatMs;
+  const escalationConfig = readEscalationConfigFromEnv();
 
   const activeRows = await db
     .select()
@@ -69,18 +50,8 @@ export async function runAlertEscalationTick(
   const acked = new Set(ackRows.map((r) => r.alertId));
 
   for (const alert of activeRows) {
-    if (acked.has(alert.id)) {
-      continue;
-    }
-
-    const dueFirst =
-      alert.lastEscalationAt === null &&
-      alert.startedAt.getTime() <= firstCutoff;
-    const dueRepeat =
-      alert.lastEscalationAt !== null &&
-      alert.lastEscalationAt.getTime() <= repeatCutoff;
-
-    if (!dueFirst && !dueRepeat) {
+    const hasAck = acked.has(alert.id);
+    if (!isAlertDueForEscalation(alert, now, hasAck, escalationConfig)) {
       continue;
     }
 
@@ -128,6 +99,7 @@ export async function runAlertEscalationTick(
     }
 
     logAlertTelemetry(log, "alert_escalated", { alertId: alert.id });
+    logAlertTelemetry(log, "escalation_triggered", { alertId: alert.id });
 
     await notifier.notifyEscalation({
       alertId: alert.id,
@@ -139,7 +111,7 @@ export async function runAlertEscalationTick(
 
 export function startAlertEscalationScheduler(
   log: FastifyBaseLogger,
-  notifier: AlertEscalationNotifier,
+  notifier: AlertContactsPushNotifier,
 ): () => void {
   const intervalMs = readIntervalMs();
   const id = setInterval(() => {

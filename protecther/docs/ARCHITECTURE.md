@@ -58,9 +58,29 @@ protecther/
 - Logs de convite em dev usam **prefixo** do token, não o valor completo.
 - Rotas `/emergency/*` exigem JWT; regras de negócio impedem auto-convite, aceite por email errado e duplicidade de vínculo ativo.
 
+## Sprint 3.1 — Hardening (produção)
+
+### Mobile
+
+- **Localização durante alerta**: `ActiveAlertLocationSync` (raiz do app autenticado) consulta `GET /alerts/active` periodicamente e mantém:
+  - `watchPositionAsync` em primeiro plano (intervalo `EXPO_PUBLIC_LOCATION_FG_INTERVAL_MS`, padrão 5s);
+  - `TaskManager` + `startLocationUpdatesAsync` em segundo plano quando há permissão **always** (intervalo `EXPO_PUBLIC_LOCATION_BG_INTERVAL_MS`, padrão 15s).
+- **Fila offline**: `@react-native-async-storage/async-storage`; falhas de `POST /alerts/:id/location` enfileiram ponto; flush em ordem cronológica com backoff exponencial + jitter; dedupe por `capturedAt` + coordenadas arredondadas; tamanho máximo **400** (descarta os mais antigos).
+- **Gap**: sem permissão “Sempre”, apenas primeiro plano envia com a cadência alta; Expo Go pode não refletir o mesmo comportamento que development build.
+
+### API
+
+- **Push**: interface `PushProvider` (`services/push/`) com implementação **FCM** (`firebase-admin`) quando `FIREBASE_SERVICE_ACCOUNT_JSON` está definido em produção; caso contrário stub auditable (`PROVIDER_NOT_CONFIGURED`). Orquestração em `contactsPushOrchestrator` dispara em `POST /alerts/start` e após escalonamento.
+- **Persistência**: `device_push_tokens` (upsert por `user_id` + `token`), `push_delivery_events` para auditoria.
+- **Consistência**: monotonicidade de `capturedAt` por alerta (janela configurável); índices `alerts(owner_user_id, status)`, `alert_acknowledgments(alert_id)`; transação no ACK; rate limit de ingestão mantido.
+
+### Observabilidade
+
+- Logs estruturados `telemetry`: `first_location_ingest_ms`, `location_ingest_rejected`, `location_post_failed`, `push_sent`, `push_failed`, `push_skipped_no_tokens`, `escalation_triggered`, além dos eventos anteriores.
+
 ## Próximos passos sugeridos
 
 - Refresh tokens / revogação por dispositivo.
 - OpenAPI gerada a partir dos schemas (ou vice-versa).
 - Provedor real de email + deep link com token assinado.
-- **Sprint 2**: SOS, incidente ativo, localização em tempo real (ver prompt ao final do entregável da sprint).
+- APNs direto ou FCM+iOS completo quando o app estiver no Firebase iOS.

@@ -35,7 +35,7 @@ Ou, a partir de `apps/api`:
 pnpm db:migrate
 ```
 
-Inclui a migração `0001_alerts` (tabelas `alerts` e `alert_audit_events`). Após atualizar o repositório, rode `db:migrate` de novo se novas migrações forem adicionadas.
+Inclui migrações versionadas em `apps/api/drizzle/` (alertas, localizações, **Sprint 3.1**: tokens de push e auditoria de envio). Após atualizar o repositório, rode `db:migrate` de novo se novas migrações forem adicionadas.
 
 ### Seed opcional (dev)
 
@@ -110,3 +110,36 @@ corepack pnpm -C C:/src/pi4semestre/protecther lint
 ## Healthcheck (Sprint 0)
 
 `GET /health` continua disponível para smoke tests.
+
+---
+
+## Sprint 3.1 — Checklist manual (fluxo crítico)
+
+Pré-requisitos: API migrada, `JWT_SECRET` válido; em **produção**, `FIREBASE_SERVICE_ACCOUNT_JSON` preenchido para push real (sem isso, envios são registrados como falha `PROVIDER_NOT_CONFIGURED`).
+
+1. **Titular inicia alerta** — SOS → alerta visível ou discreto; nos logs da API deve aparecer `telemetry: alert_started` e tentativas de push (`push_sent` / `push_failed` conforme tokens).
+2. **Contato recebe push** — contato com app instalado (build nativo ou dev client com notificações), logado, com permissão de notificação; token registrado após login.
+3. **Contato abre detalhe e vê trilha** — Alertas das titulares → detalhe; pontos aparecem conforme ingestão.
+4. **Titular em background** — com permissão **“Sempre”** / background location concedida, minimizar o app; verificar que pontos continuam em `GET /alerts/:id/locations` (ou logs `location_point_sent` no mobile em dev).
+5. **Rede off/on** — modo avião curto na titular; ao voltar, fila local deve drenar (telemetria `location_queue_*` no console em `__DEV__`).
+6. **ACK** — contato confirma no app; escalonamento não deve mais disparar para esse alerta.
+7. **Sem ACK** — reduzir temporariamente `ALERT_ESCALATION_NO_ACK_MINUTES` e `ALERT_ESCALATION_INTERVAL_MS` no `.env` da API para teste; após a janela, verificar `telemetry: escalation_triggered` e segundo push de prioridade alta.
+
+### Testes automatizados (API)
+
+Na pasta `apps/api`:
+
+```bash
+pnpm test
+```
+
+`vitest` usa `DATABASE_URL` fictícia nos testes apenas para carregar módulos; os testes de integração atuais validam shell de autenticação (401) sem acessar o banco.
+
+---
+
+## Limitações conhecidas por plataforma (localização / push)
+
+- **Android 10+**: localização em background exige permissão dedicada e, em builds recentes, serviço em primeiro plano (o app configura `foregroundService` no `startLocationUpdatesAsync` quando disponível no Expo).
+- **iOS**: background location requer capacidade **Location updates** e permissão “Sempre”; o sistema pode limitar frequência em background e exibir indicador de barra de status.
+- **iOS + FCM**: o backend envia via Firebase; tokens do `expo-notifications` no iOS podem ser de APNs — entrega via FCM pode exigir configuração adicional do app Firebase (gap documentado; Android FCM é o caminho principal nesta sprint).
+- **Expo Go**: TaskManager / notificações podem ter comportamento reduzido; validação final em **development build** ou release.

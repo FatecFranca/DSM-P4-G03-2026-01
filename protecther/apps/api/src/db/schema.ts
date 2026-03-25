@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   doublePrecision,
   index,
   integer,
@@ -40,6 +41,19 @@ export const alertAuditEventEnum = pgEnum("alert_audit_event", [
   "cancelled_duress",
   "escalated",
 ]);
+
+export const devicePlatformEnum = pgEnum("device_platform", [
+  "ios",
+  "android",
+  "web",
+]);
+
+export const pushDeliveryKindEnum = pgEnum("push_delivery_kind", [
+  "alert_started",
+  "escalation",
+]);
+
+export const pushPriorityEnum = pgEnum("push_priority", ["normal", "high"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -112,6 +126,7 @@ export const alerts = pgTable(
     uniqueIndex("alerts_one_active_per_owner_idx")
       .on(table.ownerUserId)
       .where(sql`${table.status} = 'active'`),
+    index("alerts_owner_status_idx").on(table.ownerUserId, table.status),
   ],
 );
 
@@ -155,6 +170,7 @@ export const alertAcknowledgments = pgTable(
       .notNull(),
   },
   (table) => [
+    index("alert_ack_alert_id_idx").on(table.alertId),
     uniqueIndex("alert_ack_alert_contact_idx").on(
       table.alertId,
       table.contactUserId,
@@ -176,3 +192,51 @@ export const alertAuditEvents = pgTable("alert_audit_events", {
     .notNull(),
   payload: jsonb("payload").$type<Record<string, unknown> | null>(),
 });
+
+export const devicePushTokens = pgTable(
+  "device_push_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    platform: devicePlatformEnum("platform").notNull(),
+    token: text("token").notNull(),
+    active: boolean("active").notNull().default(true),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("device_push_tokens_user_token_uidx").on(
+      table.userId,
+      table.token,
+    ),
+    index("device_push_tokens_user_idx").on(table.userId),
+  ],
+);
+
+export const pushDeliveryEvents = pgTable(
+  "push_delivery_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    alertId: uuid("alert_id")
+      .notNull()
+      .references(() => alerts.id),
+    recipientUserId: uuid("recipient_user_id")
+      .notNull()
+      .references(() => users.id),
+    kind: pushDeliveryKindEnum("kind").notNull(),
+    priority: pushPriorityEnum("priority").notNull(),
+    success: boolean("success").notNull(),
+    errorCode: text("error_code"),
+    providerMessageId: text("provider_message_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("push_delivery_events_alert_idx").on(table.alertId)],
+);

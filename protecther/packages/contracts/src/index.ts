@@ -30,6 +30,14 @@ export {
   type ListContactsResponse,
 } from "./emergency.js";
 export {
+  DevicePlatformSchema,
+  RegisterPushTokenRequestSchema,
+  RegisterPushTokenResponseSchema,
+  type DevicePlatform,
+  type RegisterPushTokenRequest,
+  type RegisterPushTokenResponse,
+} from "./devices.js";
+export {
   AckAlertParamsSchema,
   AckAlertResponseSchema,
   ActiveAlertResponseSchema,

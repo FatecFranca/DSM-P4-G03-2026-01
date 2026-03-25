@@ -219,3 +219,35 @@ Se `pin` estiver presente e não vazio (após trim), o cancelamento é tratado c
 **200** — `CancelAlertResponse` com o alerta já encerrado.
 
 **409** — alerta já não está ativo (`ALERT_NOT_ACTIVE`).
+
+---
+
+## Sprint 3.1 — Dispositivo e push
+
+### `POST /devices/push-token`
+
+Requer JWT. Registra ou atualiza o token de push do dispositivo autenticado (FCM no Android; iOS envia token nativo — ver limitações em `docs/ARCHITECTURE.md`).
+
+**Body** — `RegisterPushTokenRequest`
+
+```json
+{ "platform": "android", "token": "<fcm-or-native-token>" }
+```
+
+`platform`: `ios` | `android` | `web`.
+
+**200** — `{ "ok": true }`
+
+### Fluxo de push (alerta)
+
+1. Contatos ativos registram token via `POST /devices/push-token`.
+2. Ao **`POST /alerts/start`**, a API envia push para todos os tokens **ativos** dos contatos da titular (`push_delivery_kind: alert_started`, prioridade normal).
+3. No **escalonamento** (job periódico, sem ACK dentro da janela configurada), a API reenvia push com prioridade **alta** (`push_delivery_kind: escalation`).
+4. Cada tentativa gera linha em `push_delivery_events` (sucesso/falha, código de erro do provedor quando houver) para auditoria.
+
+Payload `data` do FCM inclui `alertId` e `kind` (`alert_started` | `escalation`) — sem PII.
+
+### Localização — validação extra
+
+- `POST /alerts/:id/location`: rejeita `capturedAt` que **retroceda** além de `ALERT_LOCATION_CAPTURE_REGRESSION_MS` (padrão 180000 ms = 3 min) em relação ao último ponto já armazenado para o mesmo alerta (`VALIDATION_ERROR`).
+- Rate limit por usuário permanece configurável via `ALERT_LOCATION_RATE_MAX_PER_MINUTE`.

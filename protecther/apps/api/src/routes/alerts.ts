@@ -16,7 +16,7 @@ import {
   StartAlertRequestSchema,
   StartAlertResponseSchema,
 } from "@protecther/contracts";
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, max, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import {
@@ -36,6 +36,7 @@ import {
 import { apiError } from "../lib/httpErrors.js";
 import { toAlertPublic, toUserPublic } from "../lib/mappers.js";
 import { logAlertTelemetry } from "../lib/telemetry.js";
+import type { AlertContactsPushNotifier } from "../services/alertNotifications/types.js";
 
 function getUserId(request: { user?: { sub?: string } }): string | undefined {
   return request.user?.sub;
@@ -61,6 +62,10 @@ const LOCATION_INGEST_MAX_PER_MINUTE = Number(
   process.env.ALERT_LOCATION_RATE_MAX_PER_MINUTE ?? 90,
 );
 
+const CAPTURE_REGRESSION_MS = Number(
+  process.env.ALERT_LOCATION_CAPTURE_REGRESSION_MS ?? 180_000,
+);
+
 function toLocationPoint(row: typeof alertLocations.$inferSelect) {
   return AlertLocationPointSchema.parse({
     id: row.id,
@@ -79,7 +84,10 @@ function parseIsoMs(value: string): number | null {
   return Number.isNaN(ms) ? null : ms;
 }
 
-export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
+export async function registerAlertRoutes(
+  app: FastifyInstance,
+  deps: { contactsPush: AlertContactsPushNotifier },
+): Promise<void> {
   /** Static paths first; param routes last (avoid `:id` shadowing). */
   app.post("/alerts/start", async (request, reply) => {
     const userId = getUserId(request);
@@ -132,6 +140,13 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
 
       logAlertTelemetry(request.log, "alert_started", {
         alertId: result.id,
+      });
+
+      void deps.contactsPush.notifyAlertStarted(result.id).catch((err) => {
+        request.log.error(
+          { err, alertId: result.id },
+          "notify_alert_started_failed",
+        );
       });
 
       const body = StartAlertResponseSchema.parse({
@@ -287,6 +302,10 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
           );
       }
       if (capturedMs < alert.startedAt.getTime() - skewMs) {
+        logAlertTelemetry(request.log, "location_ingest_rejected", {
+          alertId,
+          reason: "before_alert_start",
+        });
         return reply
           .status(400)
           .send(
@@ -297,23 +316,72 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
           );
       }
 
-      const [inserted] = await db
-        .insert(alertLocations)
-        .values({
-          alertId,
-          lat: bodyParsed.data.lat,
-          lng: bodyParsed.data.lng,
-          accuracy: bodyParsed.data.accuracy ?? null,
-          speed: bodyParsed.data.speed ?? null,
-          heading: bodyParsed.data.heading ?? null,
-          capturedAt: new Date(capturedMs),
-        })
-        .returning();
+      const [lastCap] = await db
+        .select({ last: max(alertLocations.capturedAt) })
+        .from(alertLocations)
+        .where(eq(alertLocations.alertId, alertId));
 
-      if (!inserted) {
+      if (
+        lastCap?.last &&
+        capturedMs < lastCap.last.getTime() - CAPTURE_REGRESSION_MS
+      ) {
+        logAlertTelemetry(request.log, "location_ingest_rejected", {
+          alertId,
+          reason: "captured_at_regression",
+        });
+        return reply
+          .status(400)
+          .send(
+            apiError(
+              "VALIDATION_ERROR",
+              "capturedAt regressed beyond allowed window for this alert",
+            ),
+          );
+      }
+
+      const [countRow] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(alertLocations)
+        .where(eq(alertLocations.alertId, alertId));
+
+      const priorCount = Number(countRow?.n ?? 0);
+
+      let inserted: typeof alertLocations.$inferSelect | undefined;
+      try {
+        const [row] = await db
+          .insert(alertLocations)
+          .values({
+            alertId,
+            lat: bodyParsed.data.lat,
+            lng: bodyParsed.data.lng,
+            accuracy: bodyParsed.data.accuracy ?? null,
+            speed: bodyParsed.data.speed ?? null,
+            heading: bodyParsed.data.heading ?? null,
+            capturedAt: new Date(capturedMs),
+          })
+          .returning();
+        inserted = row;
+      } catch (err) {
+        request.log.error({ err, alertId }, "location_insert_failed");
+        logAlertTelemetry(request.log, "location_post_failed", { alertId });
         return reply
           .status(500)
           .send(apiError("INSERT_FAILED", "Could not store location"));
+      }
+
+      if (!inserted) {
+        logAlertTelemetry(request.log, "location_post_failed", { alertId });
+        return reply
+          .status(500)
+          .send(apiError("INSERT_FAILED", "Could not store location"));
+      }
+
+      if (priorCount === 0) {
+        const ms = Date.now() - alert.startedAt.getTime();
+        logAlertTelemetry(request.log, "first_location_ingest_ms", {
+          alertId,
+          ms,
+        });
       }
 
       logAlertTelemetry(request.log, "location_point_sent", { alertId });
@@ -438,13 +506,16 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const [row] = await db
-        .insert(alertAcknowledgments)
-        .values({
-          alertId,
-          contactUserId: userId,
-        })
-        .returning();
+      const row = await db.transaction(async (tx) => {
+        const [inserted] = await tx
+          .insert(alertAcknowledgments)
+          .values({
+            alertId,
+            contactUserId: userId,
+          })
+          .returning();
+        return inserted;
+      });
 
       if (!row) {
         return reply

@@ -1,11 +1,9 @@
 import {
   ActiveAlertResponseSchema,
   CancelAlertResponseSchema,
-  PostAlertLocationRequestSchema,
 } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import Constants from "expo-constants";
 import * as Location from "expo-location";
 import { useCallback, useState } from "react";
 import {
@@ -24,16 +22,6 @@ import type { AppStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ActiveAlert">;
 
-const INTERVAL_CHOICES_MS = [10_000, 15_000, 30_000] as const;
-
-function defaultIntervalMs(): number {
-  const extra = Constants.expoConfig?.extra as
-    | { locationIntervalMs?: number }
-    | undefined;
-  const v = extra?.locationIntervalMs;
-  return typeof v === "number" && Number.isFinite(v) ? v : 15_000;
-}
-
 export function ActiveAlertScreen({ navigation, route }: Props) {
   const { alertId } = route.params;
   const { getAccessToken } = useAuth();
@@ -42,8 +30,7 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [locError, setLocError] = useState<string | null>(null);
-  const [intervalMs, setIntervalMs] = useState(defaultIntervalMs);
+  const [bgHint, setBgHint] = useState<string | null>(null);
 
   const loadActive = useCallback(async () => {
     setError(null);
@@ -78,122 +65,27 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
     }, [loadActive]),
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      let subscription: Location.LocationSubscription | undefined;
-      let cancelled = false;
-
-      async function startStream() {
-        setLocError(null);
-        const activeCheck = await apiFetchJson<unknown>("/alerts/active", {
-          method: "GET",
-          accessToken: getAccessToken(),
-        });
-        if (!activeCheck.ok) {
-          setLocError(formatApiError(activeCheck.body));
-          logMobileTelemetry("location_stream_failed", {
-            reason: "active_check_http",
-            status: activeCheck.status,
-          });
-          return;
-        }
-        const parsedActive = ActiveAlertResponseSchema.safeParse(
-          activeCheck.data,
-        );
-        if (!parsedActive.success || !parsedActive.data.alert) {
-          setLocError("Sem alerta ativo para enviar localização.");
-          logMobileTelemetry("location_stream_failed", {
-            reason: "no_active_alert",
-          });
-          return;
-        }
-        if (parsedActive.data.alert.id !== alertId) {
-          setLocError("O alerta ativo não corresponde a esta tela.");
-          logMobileTelemetry("location_stream_failed", {
-            reason: "alert_mismatch",
-          });
-          return;
-        }
-
-        const perm = await Location.requestForegroundPermissionsAsync();
-        if (perm.status !== "granted") {
-          setLocError(
-            "Permissão de localização negada. Ative nas configurações do sistema para compartilhar posição durante o alerta.",
-          );
-          logMobileTelemetry("location_stream_failed", {
-            reason: "permission_denied",
-          });
-          return;
-        }
-
-        logMobileTelemetry("location_stream_started", { alertId });
-
-        subscription = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.High,
-            timeInterval: intervalMs,
-            distanceInterval: 5,
-          },
-          async (loc) => {
-            if (cancelled) {
-              return;
-            }
-            const payload = {
-              lat: loc.coords.latitude,
-              lng: loc.coords.longitude,
-              accuracy: loc.coords.accuracy ?? undefined,
-              speed:
-                loc.coords.speed != null &&
-                !Number.isNaN(loc.coords.speed) &&
-                loc.coords.speed >= 0
-                  ? loc.coords.speed
-                  : undefined,
-              heading:
-                loc.coords.heading != null &&
-                !Number.isNaN(loc.coords.heading) &&
-                loc.coords.heading >= 0
-                  ? loc.coords.heading
-                  : undefined,
-              capturedAt: new Date(loc.timestamp).toISOString(),
-            };
-            const valid = PostAlertLocationRequestSchema.safeParse(payload);
-            if (!valid.success) {
-              setLocError(valid.error.message);
-              logMobileTelemetry("location_stream_failed", {
-                reason: "validation",
-              });
-              return;
-            }
-            const post = await apiFetchJson<unknown>(
-              `/alerts/${encodeURIComponent(alertId)}/location`,
-              {
-                method: "POST",
-                body: JSON.stringify(valid.data),
-                accessToken: getAccessToken(),
-              },
-            );
-            if (!post.ok) {
-              setLocError(formatApiError(post.body));
-              logMobileTelemetry("location_stream_failed", {
-                reason: "post_http",
-                status: post.status,
-              });
-              return;
-            }
-            setLocError(null);
-            logMobileTelemetry("location_point_sent", { alertId });
-          },
-        );
-      }
-
-      void startStream();
-
-      return () => {
-        cancelled = true;
-        subscription?.remove();
-      };
-    }, [alertId, getAccessToken, intervalMs]),
-  );
+  const requestBackgroundLocation = async () => {
+    setBgHint(null);
+    const fg = await Location.requestForegroundPermissionsAsync();
+    if (fg.status !== "granted") {
+      setBgHint("Permissão de localização negada.");
+      logMobileTelemetry("location_stream_failed", {
+        reason: "permission_denied",
+      });
+      return;
+    }
+    const bg = await Location.requestBackgroundPermissionsAsync();
+    if (bg.status !== "granted") {
+      setBgHint(
+        "Sem permissão “Sempre”. No iOS, escolha “Sempre” em Ajustes > ProtectHer > Localização. No Android, ative localização em segundo plano para o app.",
+      );
+      return;
+    }
+    setBgHint(
+      "Permissão em segundo plano concedida. A trilha continua com o app minimizado.",
+    );
+  };
 
   const cancel = async () => {
     setError(null);
@@ -232,22 +124,16 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
       ) : (
         <Text style={styles.mono}>{summary}</Text>
       )}
-      <Text style={styles.label}>Intervalo de envio de localização</Text>
-      <View style={styles.row}>
-        {INTERVAL_CHOICES_MS.map((ms) => (
-          <View key={ms} style={styles.rowItem}>
-            <Button
-              title={`${ms / 1000}s`}
-              onPress={() => setIntervalMs(ms)}
-              color={intervalMs === ms ? "#0a6" : "#888"}
-            />
-          </View>
-        ))}
-      </View>
       <Text style={styles.label}>
-        A posição é enviada em segundo plano enquanto esta tela estiver em foco.
+        A localização é enviada automaticamente enquanto o alerta estiver ativo
+        (primeiro plano com alta frequência; segundo plano quando você permitir
+        “Sempre” / localização em background — ver documentação).
       </Text>
-      {locError ? <Text style={styles.warn}>{locError}</Text> : null}
+      <Button
+        title="Permitir localização em segundo plano"
+        onPress={() => void requestBackgroundLocation()}
+      />
+      {bgHint ? <Text style={styles.warn}>{bgHint}</Text> : null}
       <Text style={styles.label}>
         PIN opcional (coação): se preenchido, o alerta encerra para você, mas o
         risco é marcado como alto no sistema.
@@ -275,8 +161,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "700" },
   mono: { fontFamily: "monospace", fontSize: 12, color: "#222" },
   label: { fontSize: 14, color: "#444", marginTop: 8 },
-  row: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  rowItem: { minWidth: 72 },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
