@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1774394348109,
+      "tag": "0000_opposite_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774395543999,
+      "tag": "0001_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774396436203,
+      "tag": "0002_alert_locations",
+      "breakpoints": true
+    }
+  ]
+}
