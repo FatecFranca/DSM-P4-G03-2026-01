@@ -4,10 +4,10 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "build:packages": "pnpm --filter @protecther/contracts build && pnpm --filter @protecther/shared build",
-    "dev": "concurrently -n api,mobile -c blue,magenta \"pnpm dev:api\" \"pnpm dev:mobile\"",
-    "dev:api": "pnpm run build:packages && pnpm --filter protecther-api dev",
-    "dev:mobile": "pnpm run build:packages && pnpm --filter protecther-mobile start",
-    "build": "pnpm run build:packages && pnpm --filter protecther-api build",
+    "dev": "concurrently -n api,mobile -c blue,magenta \"corepack pnpm dev:api\" \"corepack pnpm dev:mobile\"",
+    "dev:api": "corepack pnpm run build:packages && corepack pnpm --filter protecther-api dev",
+    "dev:mobile": "corepack pnpm run build:packages && corepack pnpm --filter protecther-mobile start",
+    "build": "corepack pnpm run build:packages && corepack pnpm --filter protecther-api build",
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
     "format": "biome format --write ."

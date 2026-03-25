@@ -1,19 +1,11 @@
 import { RegisterPushTokenRequestSchema } from "@protecther/contracts";
-import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+let notificationHandlerRegistered = false;
 
 export function PushTokenSync() {
   const { state } = useAuth();
@@ -27,9 +19,27 @@ export function PushTokenSync() {
     if (Platform.OS === "web") {
       return;
     }
+    /* Expo Go não suporta push remoto no Android (SDK 53+); evita carregar o módulo e os WARNs. */
+    if (Constants.appOwnership === "expo") {
+      return;
+    }
+
     let cancelled = false;
     void (async () => {
       try {
+        const Notifications = await import("expo-notifications");
+        if (!notificationHandlerRegistered) {
+          Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+              shouldShowAlert: true,
+              shouldPlaySound: true,
+              shouldSetBadge: false,
+              shouldShowBanner: true,
+              shouldShowList: true,
+            }),
+          });
+          notificationHandlerRegistered = true;
+        }
         const existing = await Notifications.getPermissionsAsync();
         const granted =
           existing.status === "granted"
