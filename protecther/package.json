@@ -1,0 +1,20 @@
+{
+  "name": "protecther",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build:packages": "pnpm --filter @protecther/contracts build && pnpm --filter @protecther/shared build",
+    "dev": "concurrently -n api,mobile -c blue,magenta \"pnpm dev:api\" \"pnpm dev:mobile\"",
+    "dev:api": "pnpm run build:packages && pnpm --filter protecther-api dev",
+    "dev:mobile": "pnpm run build:packages && pnpm --filter protecther-mobile start",
+    "build": "pnpm run build:packages && pnpm --filter protecther-api build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "concurrently": "9.1.2",
+    "typescript": "5.9.2"
+  }
+}
