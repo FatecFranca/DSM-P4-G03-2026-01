@@ -16,5 +16,11 @@
     "@biomejs/biome": "1.9.4",
     "concurrently": "9.1.2",
     "typescript": "5.9.2"
+  },
+  "version": "1.0.0",
+  "dependencies": {
+    "expo": "~55.0.8",
+    "react": "19.2.0",
+    "react-native": "0.83.2"
   }
 }

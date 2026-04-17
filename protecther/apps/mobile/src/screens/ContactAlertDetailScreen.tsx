@@ -7,7 +7,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,10 +14,15 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
+import { AppButton } from "../components/AppButton";
+import { GlassCard } from "../components/GlassCard";
+import { Avatar } from "../components/Avatar";
+import { Badge } from "../components/Badge";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
 import { logMobileTelemetry } from "../lib/telemetry";
+import { Colors, Typography, Spacing, Radius, Shadow } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ContactAlertDetail">;
@@ -125,14 +129,39 @@ export function ContactAlertDetailScreen({ route }: Props) {
     logMobileTelemetry("alert_acknowledged", { alertId });
   };
 
+  const formatDateTime = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{ownerName}</Text>
-      <Text style={styles.sub}>Alerta {alertId}</Text>
-      {loading && points.length === 0 ? <ActivityIndicator /> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {Platform.OS !== "web" && last ? (
-        <View style={styles.mapWrap}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <Avatar name={ownerName} size={56} color={Colors.danger} />
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerName}>{ownerName}</Text>
+          <Text style={styles.headerSub}>
+            Alerta desde {formatDateTime(startedAt)}
+          </Text>
+        </View>
+        <Badge label="Ativo" variant="danger" />
+      </View>
+
+      {/* Map */}
+      {loading && points.length === 0 ? (
+        <View style={styles.mapPlaceholder}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+          <Text style={styles.mapLoading}>Carregando localização…</Text>
+        </View>
+      ) : Platform.OS !== "web" && last ? (
+        <View style={styles.mapContainer}>
           <MapView
             style={styles.map}
             region={{
@@ -145,7 +174,7 @@ export function ContactAlertDetailScreen({ route }: Props) {
             {coords.length > 1 ? (
               <Polyline
                 coordinates={coords}
-                strokeColor="#b00020"
+                strokeColor={Colors.danger}
                 strokeWidth={3}
               />
             ) : null}
@@ -154,38 +183,168 @@ export function ContactAlertDetailScreen({ route }: Props) {
               title="Última posição"
             />
           </MapView>
+          <View style={styles.mapOverlay}>
+            <Text style={styles.mapOverlayText}>
+              📍 {points.length} ponto{points.length !== 1 ? "s" : ""} · Atualiza a
+              cada 5s
+            </Text>
+          </View>
         </View>
       ) : null}
+
+      {/* Fallback: text points */}
       {Platform.OS === "web" || !last ? (
-        <Text style={styles.mono}>
-          {points.length === 0
-            ? "Aguardando pontos de localização…"
-            : points
-                .slice(-8)
-                .map(
-                  (p) =>
-                    `${p.capturedAt}\n  ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}\n`,
-                )
-                .join("\n")}
-        </Text>
+        <GlassCard>
+          <Text style={styles.pointsTitle}>📍 Pontos de localização</Text>
+          {points.length === 0 ? (
+            <Text style={styles.pointsEmpty}>
+              Aguardando pontos de localização…
+            </Text>
+          ) : (
+            points.slice(-6).map((p) => (
+              <View key={p.id} style={styles.pointRow}>
+                <Text style={styles.pointTime}>
+                  {formatDateTime(p.capturedAt)}
+                </Text>
+                <Text style={styles.pointCoords}>
+                  {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
+                </Text>
+              </View>
+            ))
+          )}
+        </GlassCard>
       ) : null}
-      <Button
-        title="Confirmar recebimento (ACK)"
-        onPress={() => void acknowledge()}
-      />
-      {ackAt ? <Text style={styles.ok}>Confirmado em {ackAt}</Text> : null}
-      {ackError ? <Text style={styles.error}>{ackError}</Text> : null}
+
+      {/* ACK */}
+      <GlassCard style={styles.ackCard}>
+        <Text style={styles.ackTitle}>
+          {ackAt ? "✅ Recebimento confirmado" : "Confirmar recebimento"}
+        </Text>
+        <Text style={styles.ackDesc}>
+          {ackAt
+            ? `Confirmado em ${formatDateTime(ackAt)}`
+            : "Indique que você recebeu o alerta e está ciente."}
+        </Text>
+        {!ackAt ? (
+          <AppButton
+            title="Confirmar (ACK)"
+            variant="primary"
+            onPress={() => void acknowledge()}
+            small
+            style={{ marginTop: Spacing.sm }}
+          />
+        ) : null}
+        {ackError ? <Text style={styles.error}>{ackError}</Text> : null}
+      </GlassCard>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, paddingBottom: 48, gap: 12 },
-  title: { fontSize: 20, fontWeight: "700" },
-  sub: { fontSize: 14, color: "#444" },
-  mapWrap: { height: 280, borderRadius: 12, overflow: "hidden" },
-  map: { flex: 1 },
-  mono: { fontFamily: "monospace", fontSize: 12, color: "#222" },
-  error: { color: "#c00" },
-  ok: { color: "#060", fontWeight: "600" },
+  scroll: {
+    flex: 1,
+    backgroundColor: Colors.bgPrimary,
+  },
+  container: {
+    padding: Spacing.xl,
+    paddingTop: 60,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.lg,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  headerName: {
+    ...Typography.h2,
+    color: Colors.textPrimary,
+  },
+  headerSub: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  mapContainer: {
+    borderRadius: Radius.lg,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.md,
+  },
+  map: {
+    height: 300,
+  },
+  mapOverlay: {
+    backgroundColor: Colors.bgSecondary,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  mapOverlayText: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+  },
+  mapPlaceholder: {
+    height: 200,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.md,
+  },
+  mapLoading: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+  },
+  pointsTitle: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.sm,
+  },
+  pointsEmpty: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+  },
+  pointRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  pointTime: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+  },
+  pointCoords: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  ackCard: {
+    gap: Spacing.sm,
+  },
+  ackTitle: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+  },
+  ackDesc: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+  },
+  error: {
+    ...Typography.caption,
+    color: Colors.textDanger,
+    textAlign: "center",
+    marginTop: Spacing.sm,
+  },
 });

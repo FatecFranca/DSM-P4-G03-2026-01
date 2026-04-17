@@ -6,15 +6,19 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Button,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { AppButton } from "../components/AppButton";
+import { AppInput } from "../components/AppInput";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
+import { Colors, Typography, Spacing, Radius } from "../theme";
 import type { AuthStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
@@ -55,46 +59,110 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Entrar</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {loading ? (
-        <ActivityIndicator />
-      ) : (
-        <Button title="Login" onPress={() => void onSubmit()} />
-      )}
-      <Button
-        title="Criar conta"
-        onPress={() => navigation.navigate("Register")}
-      />
-    </View>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Logo / Branding */}
+        <View style={styles.logoSection}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoIcon}>🛡️</Text>
+          </View>
+          <Text style={styles.appName}>ProtectHer</Text>
+          <Text style={styles.tagline}>Sua segurança em primeiro lugar</Text>
+        </View>
+
+        {/* Form */}
+        <View style={styles.form}>
+          <Text style={styles.title}>Entrar</Text>
+
+          <AppInput
+            label="E-mail"
+            placeholder="seu@email.com"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <AppInput
+            label="Senha"
+            placeholder="••••••••"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <AppButton
+            title="Entrar"
+            onPress={() => void onSubmit()}
+            loading={loading}
+            style={{ marginTop: Spacing.sm }}
+          />
+
+          <AppButton
+            title="Criar conta"
+            onPress={() => navigation.navigate("Register")}
+            variant="ghost"
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center" },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  flex: { flex: 1, backgroundColor: Colors.bgPrimary },
+  container: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: Spacing.xl,
+    paddingBottom: Spacing.xxxl,
   },
-  error: { color: "#c00" },
+  logoSection: {
+    alignItems: "center",
+    marginBottom: Spacing.xxl,
+  },
+  logoCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: Colors.bgGlass,
+    borderWidth: 2,
+    borderColor: Colors.borderActive,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  logoIcon: {
+    fontSize: 40,
+  },
+  appName: {
+    ...Typography.hero,
+    color: Colors.textPrimary,
+  },
+  tagline: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    marginTop: Spacing.xs,
+  },
+  form: {
+    gap: Spacing.lg,
+  },
+  title: {
+    ...Typography.h2,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.sm,
+  },
+  error: {
+    ...Typography.caption,
+    color: Colors.textDanger,
+    textAlign: "center",
+  },
 });

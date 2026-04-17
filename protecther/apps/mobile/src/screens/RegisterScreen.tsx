@@ -5,16 +5,19 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Button,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { AppButton } from "../components/AppButton";
+import { AppInput } from "../components/AppInput";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
+import { Colors, Typography, Spacing } from "../theme";
 import type { AuthStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
@@ -56,52 +59,112 @@ export function RegisterScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Registrar</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Nome"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha (mín. 8)"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {loading ? (
-        <ActivityIndicator />
-      ) : (
-        <Button title="Registrar" onPress={() => void onSubmit()} />
-      )}
-      <Button
-        title="Já tenho conta"
-        onPress={() => navigation.navigate("Login")}
-      />
-    </View>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoIcon}>🛡️</Text>
+          </View>
+          <Text style={styles.title}>Criar conta</Text>
+          <Text style={styles.subtitle}>
+            Cadastre-se e proteja quem você ama
+          </Text>
+        </View>
+
+        {/* Form */}
+        <View style={styles.form}>
+          <AppInput
+            label="Nome"
+            placeholder="Seu nome completo"
+            value={name}
+            onChangeText={setName}
+          />
+
+          <AppInput
+            label="E-mail"
+            placeholder="seu@email.com"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <AppInput
+            label="Senha"
+            placeholder="Mínimo 8 caracteres"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <AppButton
+            title="Registrar"
+            onPress={() => void onSubmit()}
+            loading={loading}
+            style={{ marginTop: Spacing.sm }}
+          />
+
+          <AppButton
+            title="Já tenho conta"
+            onPress={() => navigation.navigate("Login")}
+            variant="ghost"
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 12, justifyContent: "center" },
-  title: { fontSize: 24, fontWeight: "700", marginBottom: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  flex: { flex: 1, backgroundColor: Colors.bgPrimary },
+  container: {
+    flexGrow: 1,
+    justifyContent: "center",
+    padding: Spacing.xl,
+    paddingBottom: Spacing.xxxl,
   },
-  error: { color: "#c00" },
+  header: {
+    alignItems: "center",
+    marginBottom: Spacing.xxl,
+  },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.bgGlass,
+    borderWidth: 2,
+    borderColor: Colors.borderActive,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
+  },
+  logoIcon: {
+    fontSize: 32,
+  },
+  title: {
+    ...Typography.h1,
+    color: Colors.textPrimary,
+  },
+  subtitle: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    marginTop: Spacing.xs,
+  },
+  form: {
+    gap: Spacing.lg,
+  },
+  error: {
+    ...Typography.caption,
+    color: Colors.textDanger,
+    textAlign: "center",
+  },
 });

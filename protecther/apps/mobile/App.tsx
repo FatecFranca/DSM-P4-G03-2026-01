@@ -12,7 +12,7 @@ export default function App() {
         <ActiveAlertLocationSync />
         <PushTokenSync />
         <RootNavigator />
-        <StatusBar style="auto" />
+        <StatusBar style="light" />
       </AuthProvider>
     </SafeAreaProvider>
   );

@@ -5,19 +5,24 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as Location from "expo-location";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
+  Animated,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { AppButton } from "../components/AppButton";
+import { AppInput } from "../components/AppInput";
+import { GlassCard } from "../components/GlassCard";
+import { Badge } from "../components/Badge";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
 import { logMobileTelemetry } from "../lib/telemetry";
+import { Colors, Typography, Spacing, Radius } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ActiveAlert">;
@@ -25,12 +30,39 @@ type Props = NativeStackScreenProps<AppStackParamList, "ActiveAlert">;
 export function ActiveAlertScreen({ navigation, route }: Props) {
   const { alertId } = route.params;
   const { getAccessToken } = useAuth();
-  const [summary, setSummary] = useState<string>("Carregando…");
+  const [alertData, setAlertData] = useState<{
+    status: string;
+    mode: string;
+    riskLevel: string;
+    startedAt: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [bgHint, setBgHint] = useState<string | null>(null);
+
+  // Pulsing red ring animation
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim]);
 
   const loadActive = useCallback(async () => {
     setError(null);
@@ -50,12 +82,15 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
     }
     const active = parsed.data.alert;
     if (!active || active.id !== alertId) {
-      setSummary("Nenhum alerta ativo (encerrado ou outro dispositivo).");
+      setAlertData(null);
       return;
     }
-    setSummary(
-      `Status: ${active.status}\nModo: ${active.mode}\nRisco: ${active.riskLevel}\nInício: ${active.startedAt}`,
-    );
+    setAlertData({
+      status: active.status,
+      mode: active.mode,
+      riskLevel: active.riskLevel,
+      startedAt: active.startedAt,
+    });
   }, [alertId, getAccessToken]);
 
   useFocusEffect(
@@ -78,13 +113,11 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
     const bg = await Location.requestBackgroundPermissionsAsync();
     if (bg.status !== "granted") {
       setBgHint(
-        "Sem permissão “Sempre”. No iOS, escolha “Sempre” em Ajustes > ProtectHer > Localização. No Android, ative localização em segundo plano para o app.",
+        'Sem permissão "Sempre". Ative em Ajustes > ProtectHer > Localização para rastreio em segundo plano.',
       );
       return;
     }
-    setBgHint(
-      "Permissão em segundo plano concedida. A trilha continua com o app minimizado.",
-    );
+    setBgHint("✅ Localização em segundo plano ativada!");
   };
 
   const cancel = async () => {
@@ -116,58 +149,193 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
     }
   };
 
+  const elapsed = alertData
+    ? Math.round(
+        (Date.now() - Date.parse(alertData.startedAt)) / 1000 / 60,
+      )
+    : 0;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Alerta ativo</Text>
-      {refreshing ? (
-        <ActivityIndicator />
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* Pulsing indicator */}
+      <View style={styles.pulseSection}>
+        <Animated.View style={[styles.pulseOuter, { opacity: pulseAnim }]} />
+        <View style={styles.pulseDot} />
+        <Text style={styles.pulseLabel}>ALERTA ATIVO</Text>
+      </View>
+
+      {/* Alert Info */}
+      {refreshing && !alertData ? (
+        <ActivityIndicator color={Colors.danger} />
+      ) : alertData ? (
+        <GlassCard variant="danger" style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Modo</Text>
+            <Badge
+              label={alertData.mode === "visible" ? "Visível" : "Discreto"}
+              variant={alertData.mode === "visible" ? "danger" : "neutral"}
+            />
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Risco</Text>
+            <Badge
+              label={alertData.riskLevel === "high" ? "Alto" : "Normal"}
+              variant={alertData.riskLevel === "high" ? "danger" : "safe"}
+            />
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Tempo</Text>
+            <Text style={styles.infoValue}>{elapsed} min</Text>
+          </View>
+        </GlassCard>
       ) : (
-        <Text style={styles.mono}>{summary}</Text>
+        <Text style={styles.noAlert}>Alerta encerrado ou indisponível.</Text>
       )}
-      <Text style={styles.label}>
-        A localização é enviada automaticamente enquanto o alerta estiver ativo
-        (primeiro plano com alta frequência; segundo plano quando você permitir
-        “Sempre” / localização em background — ver documentação).
-      </Text>
-      <Button
-        title="Permitir localização em segundo plano"
-        onPress={() => void requestBackgroundLocation()}
-      />
-      {bgHint ? <Text style={styles.warn}>{bgHint}</Text> : null}
-      <Text style={styles.label}>
-        PIN opcional (coação): se preenchido, o alerta encerra para você, mas o
-        risco é marcado como alto no sistema.
-      </Text>
-      <TextInput
-        style={styles.input}
-        placeholder="PIN (opcional)"
-        autoCapitalize="none"
-        secureTextEntry
-        value={pin}
-        onChangeText={setPin}
-      />
-      {loading ? (
-        <ActivityIndicator />
-      ) : (
-        <Button title="Cancelar alerta" onPress={() => void cancel()} />
-      )}
+
+      {/* Location Tracking */}
+      <GlassCard>
+        <Text style={styles.trackTitle}>📍 Rastreamento de localização</Text>
+        <Text style={styles.trackDesc}>
+          Sua localização está sendo enviada automaticamente para seus contatos
+          de emergência em tempo real.
+        </Text>
+        <AppButton
+          title="Permitir segundo plano"
+          variant="outline"
+          onPress={() => void requestBackgroundLocation()}
+          small
+          style={{ marginTop: Spacing.md }}
+        />
+        {bgHint ? (
+          <Text
+            style={[
+              styles.hint,
+              bgHint.startsWith("✅")
+                ? { color: Colors.safe }
+                : { color: Colors.warning },
+            ]}
+          >
+            {bgHint}
+          </Text>
+        ) : null}
+      </GlassCard>
+
+      {/* Cancel Section */}
+      <GlassCard style={styles.cancelSection}>
+        <Text style={styles.cancelTitle}>Estou segura</Text>
+        <Text style={styles.cancelDesc}>
+          PIN opcional — se preenchido, o sistema entende que você está sob
+          coação. O alerta encerra para você, mas o risco é elevado no sistema.
+        </Text>
+        <AppInput
+          placeholder="PIN de coação (opcional)"
+          value={pin}
+          onChangeText={setPin}
+          secureTextEntry
+        />
+        <AppButton
+          title="Cancelar alerta"
+          variant="safe"
+          onPress={() => void cancel()}
+          loading={loading}
+          style={{ marginTop: Spacing.sm }}
+        />
+      </GlassCard>
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 56, gap: 12 },
-  title: { fontSize: 22, fontWeight: "700" },
-  mono: { fontFamily: "monospace", fontSize: 12, color: "#222" },
-  label: { fontSize: 14, color: "#444", marginTop: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  scroll: {
+    flex: 1,
+    backgroundColor: Colors.bgPrimary,
   },
-  error: { color: "#c00" },
-  warn: { color: "#a60", fontWeight: "600" },
+  container: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: 60,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.lg,
+  },
+  pulseSection: {
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  pulseOuter: {
+    position: "absolute",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,71,87,0.15)",
+    top: -10,
+  },
+  pulseDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.danger,
+  },
+  pulseLabel: {
+    ...Typography.captionBold,
+    color: Colors.danger,
+    letterSpacing: 2,
+  },
+  infoCard: {
+    gap: Spacing.md,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  infoLabel: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+  },
+  infoValue: {
+    ...Typography.captionBold,
+    color: Colors.textPrimary,
+  },
+  noAlert: {
+    ...Typography.body,
+    color: Colors.textMuted,
+    textAlign: "center",
+  },
+  trackTitle: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+  },
+  trackDesc: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
+    lineHeight: 18,
+  },
+  hint: {
+    ...Typography.small,
+    marginTop: Spacing.sm,
+    fontWeight: "600",
+  },
+  cancelSection: {
+    gap: Spacing.sm,
+  },
+  cancelTitle: {
+    ...Typography.bodyBold,
+    color: Colors.safe,
+  },
+  cancelDesc: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  error: {
+    ...Typography.caption,
+    color: Colors.textDanger,
+    textAlign: "center",
+  },
 });

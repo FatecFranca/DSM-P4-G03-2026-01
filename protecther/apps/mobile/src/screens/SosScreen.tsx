@@ -5,15 +5,16 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Button,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { AppButton } from "../components/AppButton";
+import { GlassCard } from "../components/GlassCard";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
+import { Colors, Typography, Spacing } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Sos">;
@@ -54,37 +55,108 @@ export function SosScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>SOS</Text>
-      <Text style={styles.sub}>
-        Inicie um alerta em modo visível ou discreto. Apenas um alerta ativo por
-        vez.
-      </Text>
-      {loading ? (
-        <ActivityIndicator style={styles.spinner} />
-      ) : (
-        <>
-          <Button
-            title="Iniciar alerta (visível)"
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <Text style={styles.icon}>🚨</Text>
+        <Text style={styles.title}>Iniciar Alerta</Text>
+        <Text style={styles.subtitle}>
+          Escolha o modo do alerta. Seus contatos de emergência serão notificados
+          imediatamente.
+        </Text>
+      </View>
+
+      {/* Mode Cards */}
+      <View style={styles.cards}>
+        <GlassCard variant="danger" style={styles.modeCard}>
+          <Text style={styles.modeIcon}>📢</Text>
+          <Text style={styles.modeTitle}>Modo Visível</Text>
+          <Text style={styles.modeDesc}>
+            Alarme sonoro e visual para todos os seus contatos. Ideal quando você
+            precisa de atenção máxima.
+          </Text>
+          <AppButton
+            title="Ativar visível"
+            variant="danger"
             onPress={() => void startAlert("visible")}
+            loading={loading}
+            style={{ marginTop: Spacing.md }}
           />
-          <View style={styles.gap} />
-          <Button
-            title="Modo discreto"
+        </GlassCard>
+
+        <GlassCard style={styles.modeCard}>
+          <Text style={styles.modeIcon}>🤫</Text>
+          <Text style={styles.modeTitle}>Modo Discreto</Text>
+          <Text style={styles.modeDesc}>
+            Notificação silenciosa para seus contatos. Ideal quando você não pode
+            chamar atenção do agressor.
+          </Text>
+          <AppButton
+            title="Ativar discreto"
+            variant="outline"
             onPress={() => void startAlert("discreet")}
-            color="#555"
+            loading={loading}
+            style={{ marginTop: Spacing.md }}
           />
-        </>
-      )}
+        </GlassCard>
+      </View>
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 56, gap: 12 },
-  title: { fontSize: 22, fontWeight: "700" },
-  sub: { fontSize: 15, color: "#444", marginBottom: 16 },
-  spinner: { marginVertical: 24 },
-  gap: { height: 8 },
-  error: { color: "#c00", marginTop: 12 },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.bgPrimary,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: 60,
+    paddingBottom: Spacing.xl,
+  },
+  headerSection: {
+    alignItems: "center",
+    marginBottom: Spacing.xxl,
+  },
+  icon: {
+    fontSize: 48,
+    marginBottom: Spacing.md,
+  },
+  title: {
+    ...Typography.h1,
+    color: Colors.textPrimary,
+    textAlign: "center",
+  },
+  subtitle: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    marginTop: Spacing.sm,
+    maxWidth: 280,
+  },
+  cards: {
+    gap: Spacing.lg,
+  },
+  modeCard: {
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  modeIcon: {
+    fontSize: 36,
+  },
+  modeTitle: {
+    ...Typography.h3,
+    color: Colors.textPrimary,
+  },
+  modeDesc: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  error: {
+    ...Typography.caption,
+    color: Colors.textDanger,
+    textAlign: "center",
+    marginTop: Spacing.lg,
+  },
 });

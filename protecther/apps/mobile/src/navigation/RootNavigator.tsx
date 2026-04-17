@@ -1,7 +1,8 @@
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useAuth } from "../auth/AuthContext";
+import { Colors, Typography } from "../theme";
 import { ActiveAlertScreen } from "../screens/ActiveAlertScreen";
 import { ContactAlertDetailScreen } from "../screens/ContactAlertDetailScreen";
 import { ContactAlertsFeedScreen } from "../screens/ContactAlertsFeedScreen";
@@ -15,9 +16,36 @@ import type { AppStackParamList, AuthStackParamList } from "./types";
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
 
+const DarkNavTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: Colors.bgPrimary,
+    card: Colors.bgSecondary,
+    text: Colors.textPrimary,
+    border: Colors.border,
+    primary: Colors.primaryLight,
+  },
+};
+
+const screenOptions = {
+  headerStyle: {
+    backgroundColor: Colors.bgPrimary,
+  },
+  headerTintColor: Colors.textPrimary,
+  headerTitleStyle: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+  },
+  headerShadowVisible: false,
+  contentStyle: {
+    backgroundColor: Colors.bgPrimary,
+  },
+} as const;
+
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator>
+    <AuthStack.Navigator screenOptions={{ ...screenOptions, headerShown: false }}>
       <AuthStack.Screen
         name="Login"
         component={LoginScreen}
@@ -34,7 +62,7 @@ function AuthNavigator() {
 
 function AppNavigator() {
   return (
-    <AppStack.Navigator>
+    <AppStack.Navigator screenOptions={{ ...screenOptions, headerShown: false }}>
       <AppStack.Screen
         name="Home"
         component={HomeScreen}
@@ -58,12 +86,12 @@ function AppNavigator() {
       <AppStack.Screen
         name="ContactAlertsFeed"
         component={ContactAlertsFeedScreen}
-        options={{ title: "Alertas das titulares" }}
+        options={{ title: "Alertas" }}
       />
       <AppStack.Screen
         name="ContactAlertDetail"
         component={ContactAlertDetailScreen}
-        options={{ title: "Localização do alerta" }}
+        options={{ title: "Localização" }}
       />
     </AppStack.Navigator>
   );
@@ -75,18 +103,23 @@ export function RootNavigator() {
   if (state.status === "loading") {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={Colors.primaryLight} />
       </View>
     );
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={DarkNavTheme}>
       {state.status === "authenticated" ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.bgPrimary,
+  },
 });

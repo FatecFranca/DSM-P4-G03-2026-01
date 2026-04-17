@@ -7,18 +7,28 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Button,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import { AppButton } from "../components/AppButton";
+import { AppInput } from "../components/AppInput";
+import { GlassCard } from "../components/GlassCard";
+import { Avatar } from "../components/Avatar";
+import { Badge } from "../components/Badge";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
+import { Colors, Typography, Spacing, Radius } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
+
+type ContactItem = {
+  id: string;
+  name: string;
+  email: string;
+  since: string;
+};
 
 type Props = NativeStackScreenProps<AppStackParamList, "Contacts">;
 
@@ -27,7 +37,9 @@ export function ContactsScreen(_props: Props) {
   const [targetEmail, setTargetEmail] = useState("");
   const [inviteToken, setInviteToken] = useState("");
   const [devToken, setDevToken] = useState<string | null>(null);
-  const [listText, setListText] = useState<string>("");
+  const [asOwner, setAsOwner] = useState<ContactItem[]>([]);
+  const [asContact, setAsContact] = useState<ContactItem[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,21 +61,23 @@ export function ContactsScreen(_props: Props) {
       setError("Lista inválida da API");
       return;
     }
-    const lines: string[] = [];
-    lines.push("Como titular (asOwner):");
-    for (const row of parsed.data.asOwner) {
-      lines.push(
-        `- ${row.contact.name} <${row.contact.email}> — desde ${row.createdAt}`,
-      );
-    }
-    lines.push("");
-    lines.push("Onde sou contato (asContact):");
-    for (const row of parsed.data.asContact) {
-      lines.push(
-        `- Titular: ${row.owner.name} <${row.owner.email}> — desde ${row.createdAt}`,
-      );
-    }
-    setListText(lines.join("\n"));
+    setAsOwner(
+      parsed.data.asOwner.map((r) => ({
+        id: r.id,
+        name: r.contact.name,
+        email: r.contact.email,
+        since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
+      })),
+    );
+    setAsContact(
+      parsed.data.asContact.map((r) => ({
+        id: r.id,
+        name: r.owner.name,
+        email: r.owner.email,
+        since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
+      })),
+    );
+    setLoaded(true);
   }, [getAccessToken]);
 
   const createInvite = async () => {
@@ -94,7 +108,8 @@ export function ContactsScreen(_props: Props) {
       if (body.data.devInvitationToken) {
         setDevToken(body.data.devInvitationToken);
       }
-      setMessage("Convite criado.");
+      setMessage("✅ Convite enviado com sucesso!");
+      setTargetEmail("");
       await refreshList();
     } finally {
       setLoading(false);
@@ -127,7 +142,7 @@ export function ContactsScreen(_props: Props) {
         return;
       }
       setMessage(
-        `Vínculo ativo entre você e ${body.data.link.owner.name} (${body.data.link.owner.email}).`,
+        `✅ Vínculo ativo com ${body.data.link.owner.name}!`,
       );
       setInviteToken("");
       await refreshList();
@@ -136,78 +151,213 @@ export function ContactsScreen(_props: Props) {
     }
   };
 
+  const avatarColors = [
+    "#6C3CE2",
+    "#E74C3C",
+    "#2ECC71",
+    "#F39C12",
+    "#3498DB",
+    "#E91E63",
+  ];
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Contatos</Text>
-      <Button title="Atualizar lista" onPress={() => void refreshList()} />
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* Header */}
+      <Text style={styles.title}>Contatos de Emergência</Text>
 
-      <Text style={styles.section}>Lista</Text>
-      <Text style={styles.mono}>
-        {listText || "(toque em Atualizar lista)"}
-      </Text>
-
-      <Text style={styles.section}>Novo convite (email)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="email@convidada.com"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={targetEmail}
-        onChangeText={setTargetEmail}
+      <AppButton
+        title="Atualizar lista"
+        variant="outline"
+        onPress={() => void refreshList()}
+        small
       />
-      {loading ? (
-        <ActivityIndicator />
-      ) : (
-        <Button title="Criar convite" onPress={() => void createInvite()} />
-      )}
 
+      {/* As Owner */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>👤 Meus contatos</Text>
+        <Text style={styles.sectionDesc}>
+          Pessoas que você adicionou como contato de emergência
+        </Text>
+        {!loaded ? (
+          <Text style={styles.muted}>Toque em "Atualizar lista"</Text>
+        ) : asOwner.length === 0 ? (
+          <Text style={styles.muted}>Nenhum contato adicionado ainda</Text>
+        ) : (
+          asOwner.map((c, i) => (
+            <GlassCard key={c.id} style={styles.contactCard}>
+              <Avatar name={c.name} color={avatarColors[i % avatarColors.length]} />
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactName}>{c.name}</Text>
+                <Text style={styles.contactEmail}>{c.email}</Text>
+                <Text style={styles.contactSince}>Desde {c.since}</Text>
+              </View>
+              <Badge label="Ativo" variant="safe" />
+            </GlassCard>
+          ))
+        )}
+      </View>
+
+      {/* As Contact */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🤝 Sou contato de</Text>
+        <Text style={styles.sectionDesc}>
+          Titulares que você protege
+        </Text>
+        {!loaded ? null : asContact.length === 0 ? (
+          <Text style={styles.muted}>Nenhum vínculo como contato</Text>
+        ) : (
+          asContact.map((c, i) => (
+            <GlassCard key={c.id} style={styles.contactCard}>
+              <Avatar
+                name={c.name}
+                color={avatarColors[(i + 3) % avatarColors.length]}
+              />
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactName}>{c.name}</Text>
+                <Text style={styles.contactEmail}>{c.email}</Text>
+                <Text style={styles.contactSince}>Desde {c.since}</Text>
+              </View>
+              <Badge label="Ativo" variant="safe" />
+            </GlassCard>
+          ))
+        )}
+      </View>
+
+      {/* New Invite */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>✉️ Convidar contato</Text>
+        <AppInput
+          label="E-mail do contato"
+          placeholder="email@contato.com"
+          value={targetEmail}
+          onChangeText={setTargetEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <AppButton
+          title="Enviar convite"
+          onPress={() => void createInvite()}
+          loading={loading}
+          small
+          style={{ marginTop: Spacing.sm }}
+        />
+      </View>
+
+      {/* Dev Token */}
       {devToken ? (
-        <View style={styles.devBox}>
-          <Text style={styles.devLabel}>DEV — token do convite (copiar)</Text>
-          <Text selectable style={styles.mono}>
+        <GlassCard style={styles.devBox}>
+          <Text style={styles.devLabel}>🔧 DEV — token do convite</Text>
+          <Text selectable style={styles.devToken}>
             {devToken}
           </Text>
-        </View>
+        </GlassCard>
       ) : null}
 
-      <Text style={styles.section}>Aceitar convite (token)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="cole o token"
-        autoCapitalize="none"
-        value={inviteToken}
-        onChangeText={setInviteToken}
-      />
-      {loading ? null : (
-        <Button title="Aceitar convite" onPress={() => void acceptInvite()} />
-      )}
+      {/* Accept Invite */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🔗 Aceitar convite</Text>
+        <AppInput
+          label="Token do convite"
+          placeholder="Cole o token recebido"
+          value={inviteToken}
+          onChangeText={setInviteToken}
+          autoCapitalize="none"
+        />
+        <AppButton
+          title="Aceitar convite"
+          variant="outline"
+          onPress={() => void acceptInvite()}
+          loading={loading}
+          small
+          style={{ marginTop: Spacing.sm }}
+        />
+      </View>
 
-      {message ? <Text style={styles.ok}>{message}</Text> : null}
+      {/* Feedback */}
+      {message ? <Text style={styles.success}>{message}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, paddingBottom: 48, gap: 12 },
-  title: { fontSize: 22, fontWeight: "700" },
-  section: { marginTop: 16, fontWeight: "600" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  scroll: {
+    flex: 1,
+    backgroundColor: Colors.bgPrimary,
   },
-  mono: { fontFamily: "monospace", fontSize: 12, color: "#222" },
+  container: {
+    padding: Spacing.xl,
+    paddingTop: 60,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.lg,
+  },
+  title: {
+    ...Typography.h1,
+    color: Colors.textPrimary,
+  },
+  section: {
+    gap: Spacing.sm,
+  },
+  sectionTitle: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+    marginTop: Spacing.sm,
+  },
+  sectionDesc: {
+    ...Typography.small,
+    color: Colors.textMuted,
+    marginBottom: Spacing.xs,
+  },
+  muted: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+  },
+  contactCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+  },
+  contactInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  contactName: {
+    ...Typography.bodyBold,
+    color: Colors.textPrimary,
+  },
+  contactEmail: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+  },
+  contactSince: {
+    ...Typography.small,
+    color: Colors.textMuted,
+  },
   devBox: {
-    padding: 12,
-    backgroundColor: "#f4f4ff",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ccd",
+    gap: Spacing.sm,
   },
-  devLabel: { fontWeight: "600", marginBottom: 6 },
-  ok: { color: "#070" },
-  error: { color: "#c00" },
+  devLabel: {
+    ...Typography.captionBold,
+    color: Colors.warning,
+  },
+  devToken: {
+    fontFamily: "monospace",
+    fontSize: 11,
+    color: Colors.textSecondary,
+  },
+  success: {
+    ...Typography.caption,
+    color: Colors.safe,
+    textAlign: "center",
+  },
+  error: {
+    ...Typography.caption,
+    color: Colors.textDanger,
+    textAlign: "center",
+  },
 });
