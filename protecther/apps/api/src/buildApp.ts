@@ -45,6 +45,14 @@ export async function buildServer() {
     global: false,
   });
 
+  app.get("/", async () => {
+    return {
+      message: "ProtectHer API",
+      health: "/health",
+      docs: "/docs/API.md",
+    };
+  });
+
   await registerHealthRoutes(app);
   await registerAuthRoutes(app);
 

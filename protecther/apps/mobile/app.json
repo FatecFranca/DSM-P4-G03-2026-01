@@ -13,7 +13,16 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.protecther.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "location"
+        ],
+        "NSBluetoothAlwaysUsageDescription": "O Bluetooth é usado para conectar ao botão físico ESP32 via BLE.",
+        "NSBluetoothPeripheralUsageDescription": "O Bluetooth é usado para conectar ao botão físico ESP32 via BLE.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -26,6 +35,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "apiUrl": "http://localhost:3000",
+      "locationForegroundIntervalMs": 5000,
+      "locationBackgroundIntervalMs": 15000,
+      "eas": {
+        "projectId": "622d7eef-89e1-4917-beef-1efda739b976"
+      }
     }
   }
 }

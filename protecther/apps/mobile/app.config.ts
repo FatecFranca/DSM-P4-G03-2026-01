@@ -18,6 +18,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: "protecther-mobile",
     ios: {
       ...config.ios,
+      bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? "com.protecther.app",
       infoPlist: {
         ...config.ios?.infoPlist,
         UIBackgroundModes: [
@@ -27,6 +28,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             "location",
           ]),
         ],
+        NSBluetoothAlwaysUsageDescription:
+          "O Bluetooth é usado para conectar ao botão físico ESP32 via BLE.",
+        NSBluetoothPeripheralUsageDescription:
+          "O Bluetooth é usado para conectar ao botão físico ESP32 via BLE.",
       },
     },
     android: {
@@ -37,6 +42,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "ACCESS_COARSE_LOCATION",
           "ACCESS_FINE_LOCATION",
           "ACCESS_BACKGROUND_LOCATION",
+          "BLUETOOTH_SCAN",
+          "BLUETOOTH_CONNECT",
+          "BLUETOOTH_ADVERTISE",
           "FOREGROUND_SERVICE",
           "FOREGROUND_SERVICE_LOCATION",
           "POST_NOTIFICATIONS",

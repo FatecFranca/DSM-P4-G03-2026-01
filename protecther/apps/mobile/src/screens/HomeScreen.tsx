@@ -10,9 +10,9 @@ import {
   View,
 } from "react-native";
 import { GlassCard } from "../components/GlassCard";
-import { AppButton } from "../components/AppButton";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { useEspButtonBle } from "../hooks/useEspButtonBle";
 import { Colors, Typography, Spacing, Radius, Shadow } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
 
@@ -75,6 +75,11 @@ export function HomeScreen({ navigation }: Props) {
   const { user } = state.session;
   const firstName = user.name.split(" ")[0];
 
+  const { status: bleStatus, isConnected: bleConnected, error: bleError } = useEspButtonBle(() => {
+    console.log("Botão físico pressionado! Abrindo tela SOS...");
+    navigation.navigate("Sos");
+  });
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -128,6 +133,17 @@ export function HomeScreen({ navigation }: Props) {
         <Text style={styles.sosHint}>
           Seus contatos serão notificados instantaneamente
         </Text>
+        <View style={styles.bleStatusCard}>
+          <Text style={styles.bleStatusLabel}>Status BLE do ESP32</Text>
+          <Text style={[styles.bleStatusText, bleError ? styles.bleStatusError : null]}>
+            {bleError ?? (bleConnected ? "Conectado e aguardando clique" : bleStatus)}
+          </Text>
+          {bleConnected ? (
+            <Text style={styles.bleStatusHint}>
+              O dispositivo está pronto. Pressione o botão físico para testar.
+            </Text>
+          ) : null}
+        </View>
       </View>
 
       {/* Bottom Quick Actions */}
@@ -254,6 +270,32 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: "center",
     maxWidth: 240,
+  },
+  bleStatusCard: {
+    width: "100%",
+    marginTop: Spacing.lg,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  bleStatusLabel: {
+    ...Typography.captionBold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.xs,
+  },
+  bleStatusText: {
+    ...Typography.small,
+    color: Colors.textSecondary,
+  },
+  bleStatusHint: {
+    ...Typography.small,
+    color: Colors.textMuted,
+    marginTop: Spacing.xs,
+  },
+  bleStatusError: {
+    color: Colors.danger,
   },
   quickActions: {
     flexDirection: "row",
