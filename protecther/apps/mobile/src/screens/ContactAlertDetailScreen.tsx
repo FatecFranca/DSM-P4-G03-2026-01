@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,8 +39,6 @@ export function ContactAlertDetailScreen({ route }: Props) {
   const initialRef = useRef(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ackAt, setAckAt] = useState<string | null>(null);
-  const [ackError, setAckError] = useState<string | null>(null);
   const webViewRef = useRef<WebView>(null);
   const [mapHtml, setMapHtml] = useState<string | null>(null);
   const mapInit = useRef(false);
@@ -183,6 +182,12 @@ export function ContactAlertDetailScreen({ route }: Props) {
             domStorageEnabled={true}
             originWhitelist={["*"]}
           />
+          <Pressable
+            style={styles.centerBtn}
+            onPress={() => webViewRef.current?.injectJavaScript("centerMap()")}
+          >
+            <Text style={styles.centerBtnText}>⟐</Text>
+          </Pressable>
           <View style={styles.mapOverlay}>
             <Text style={styles.mapOverlayText}>
               📍 {points.length} ponto{points.length !== 1 ? "s" : ""} ·
@@ -201,28 +206,6 @@ export function ContactAlertDetailScreen({ route }: Props) {
           </Text>
         </GlassCard>
       ) : null}
-
-      {/* ACK */}
-      <GlassCard style={styles.ackCard}>
-        <Text style={styles.ackTitle}>
-          {ackAt ? "✅ Recebimento confirmado" : "Confirmar recebimento"}
-        </Text>
-        <Text style={styles.ackDesc}>
-          {ackAt
-            ? `Confirmado em ${formatDateTime(ackAt)}`
-            : "Indique que você recebeu o alerta e está ciente."}
-        </Text>
-        {!ackAt ? (
-          <AppButton
-            title="Confirmar (ACK)"
-            variant="primary"
-            onPress={() => void acknowledge()}
-            small
-            style={{ marginTop: Spacing.sm }}
-          />
-        ) : null}
-        {ackError ? <Text style={styles.error}>{ackError}</Text> : null}
-      </GlassCard>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </ScrollView>
@@ -251,6 +234,7 @@ function generateMapHtml(lat: number, lng: number): string {
     }).addTo(map);
     var marker=L.marker([${lat},${lng}]).addTo(map);
     function moveMarker(a,b){marker.setLatLng([a,b])}
+    function centerMap(){map.setView(marker.getLatLng(),map.getZoom())}
   </script>
 </body>
 </html>`;
@@ -304,6 +288,23 @@ const styles = StyleSheet.create({
   mapOverlayText: {
     ...Typography.small,
     color: Colors.textSecondary,
+  },
+  centerBtn: {
+    position: "absolute",
+    bottom: 56,
+    right: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Shadow.md,
+  },
+  centerBtnText: {
+    fontSize: 22,
+    color: Colors.primary,
+    lineHeight: 24,
   },
   mapPlaceholder: {
     height: 200,
