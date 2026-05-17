@@ -1,7 +1,4 @@
-import {
-  AckAlertResponseSchema,
-  ListAlertLocationsResponseSchema,
-} from "@protecther/contracts";
+import { ListAlertLocationsResponseSchema } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,12 +15,10 @@ import {
 import { WebView } from "react-native-webview";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { AppButton } from "../components/AppButton";
 import { Avatar } from "../components/Avatar";
 import { Badge } from "../components/Badge";
 import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
-import { logMobileTelemetry } from "../lib/telemetry";
 import type { AppStackParamList } from "../navigation/types";
 import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
 
@@ -39,6 +34,7 @@ export function ContactAlertDetailScreen({ route }: Props) {
   const initialRef = useRef(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mapTouching, setMapTouching] = useState(false);
   const webViewRef = useRef<WebView>(null);
   const [mapHtml, setMapHtml] = useState<string | null>(null);
   const mapInit = useRef(false);
@@ -125,25 +121,6 @@ export function ContactAlertDetailScreen({ route }: Props) {
     }
   }, [last]);
 
-  const acknowledge = async () => {
-    setAckError(null);
-    const result = await apiFetchJson<unknown>(
-      `/alerts/${encodeURIComponent(alertId)}/ack`,
-      { method: "POST", accessToken: getAccessToken() },
-    );
-    if (!result.ok) {
-      setAckError(formatApiError(result.body));
-      return;
-    }
-    const parsed = AckAlertResponseSchema.safeParse(result.data);
-    if (!parsed.success) {
-      setAckError("Resposta inválida ao confirmar");
-      return;
-    }
-    setAckAt(parsed.data.acknowledgedAt);
-    logMobileTelemetry("alert_acknowledged", { alertId });
-  };
-
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
     return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", {
@@ -153,7 +130,11 @@ export function ContactAlertDetailScreen({ route }: Props) {
   };
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      scrollEnabled={!mapTouching}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Avatar name={ownerName} size={56} color={Colors.danger} />
@@ -173,7 +154,12 @@ export function ContactAlertDetailScreen({ route }: Props) {
           <Text style={styles.mapLoading}>Carregando localização…</Text>
         </View>
       ) : mapHtml && last ? (
-        <View style={styles.mapContainer}>
+        <View
+          style={styles.mapContainer}
+          onTouchStart={() => setMapTouching(true)}
+          onTouchEnd={() => setMapTouching(false)}
+          onTouchCancel={() => setMapTouching(false)}
+        >
           <WebView
             ref={webViewRef}
             source={{ html: mapHtml }}
@@ -344,17 +330,6 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     fontSize: 11,
     color: Colors.textMuted,
-  },
-  ackCard: {
-    gap: Spacing.sm,
-  },
-  ackTitle: {
-    ...Typography.bodyBold,
-    color: Colors.textPrimary,
-  },
-  ackDesc: {
-    ...Typography.small,
-    color: Colors.textSecondary,
   },
   error: {
     ...Typography.caption,
