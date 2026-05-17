@@ -14,4 +14,5 @@ export type AppStackParamList = {
     ownerName: string;
     startedAt: string;
   };
+  DeviceManagement: undefined;
 };

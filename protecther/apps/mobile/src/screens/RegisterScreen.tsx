@@ -12,13 +12,13 @@ import {
   Text,
   View,
 } from "react-native";
-import { AppButton } from "../components/AppButton";
-import { AppInput } from "../components/AppInput";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AppButton } from "../components/AppButton";
+import { AppInput } from "../components/AppInput";
 import { formatApiError } from "../lib/apiError";
-import { Colors, Typography, Spacing } from "../theme";
 import type { AuthStackParamList } from "../navigation/types";
+import { Colors, Spacing, Typography } from "../theme";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Register">;
 

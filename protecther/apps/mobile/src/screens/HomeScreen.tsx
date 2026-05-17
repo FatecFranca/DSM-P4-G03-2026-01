@@ -2,19 +2,13 @@ import { ActiveAlertResponseSchema } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { GlassCard } from "../components/GlassCard";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { GlassCard } from "../components/GlassCard";
 import { useEspButtonBle } from "../hooks/useEspButtonBle";
-import { Colors, Typography, Spacing, Radius, Shadow } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
+import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Home">;
 
@@ -75,9 +69,19 @@ export function HomeScreen({ navigation }: Props) {
   const { user } = state.session;
   const firstName = user.name.split(" ")[0];
 
-  const { status: bleStatus, isConnected: bleConnected, error: bleError } = useEspButtonBle(() => {
-    console.log("Botão físico pressionado! Abrindo tela SOS...");
-    navigation.navigate("Sos");
+  const {
+    status: bleStatus,
+    isConnected: bleConnected,
+    error: bleError,
+  } = useEspButtonBle({
+    getAccessToken,
+    onAlertTriggered: (alertId: string) => {
+      navigation.navigate("ActiveAlert", { alertId });
+    },
+    onButtonPress: () => {
+      console.log("Fallback: navegando para tela SOS...");
+      navigation.navigate("Sos");
+    },
   });
 
   return (
@@ -135,8 +139,14 @@ export function HomeScreen({ navigation }: Props) {
         </Text>
         <View style={styles.bleStatusCard}>
           <Text style={styles.bleStatusLabel}>Status BLE do ESP32</Text>
-          <Text style={[styles.bleStatusText, bleError ? styles.bleStatusError : null]}>
-            {bleError ?? (bleConnected ? "Conectado e aguardando clique" : bleStatus)}
+          <Text
+            style={[
+              styles.bleStatusText,
+              bleError ? styles.bleStatusError : null,
+            ]}
+          >
+            {bleError ??
+              (bleConnected ? "Conectado e aguardando clique" : bleStatus)}
           </Text>
           {bleConnected ? (
             <Text style={styles.bleStatusHint}>
@@ -164,6 +174,15 @@ export function HomeScreen({ navigation }: Props) {
           <Text style={styles.actionIcon}>🔔</Text>
           <Text style={styles.actionLabel}>Alertas</Text>
           <Text style={styles.actionSub}>Das titulares</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.actionCard}
+          onPress={() => navigation.navigate("DeviceManagement")}
+        >
+          <Text style={styles.actionIcon}>📡</Text>
+          <Text style={styles.actionLabel}>Dispositivos</Text>
+          <Text style={styles.actionSub}>ESP32 BLE</Text>
         </Pressable>
       </View>
     </View>

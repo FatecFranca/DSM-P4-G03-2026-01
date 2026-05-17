@@ -29,6 +29,20 @@
       "when": 1774397323581,
       "tag": "0003_sprint31_push",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779020645863,
+      "tag": "0005_ble_devices",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779020733440,
+      "tag": "0006_ble_devices_updated",
+      "breakpoints": true
     }
   ]
 }

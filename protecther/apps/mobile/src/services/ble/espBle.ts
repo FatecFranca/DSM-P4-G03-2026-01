@@ -1,4 +1,4 @@
-import { PermissionsAndroid, Platform } from "react-native";
+import { type Permission, PermissionsAndroid, Platform } from "react-native";
 import { BleManager } from "react-native-ble-plx";
 
 export const DEVICE_NAME = "ESP-Oficial-BLE";
@@ -22,7 +22,9 @@ export async function requestBlePermissions(): Promise<boolean> {
     PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
   ].filter(Boolean) as string[];
 
-  const result = await PermissionsAndroid.requestMultiple(permissions);
+  const result = await PermissionsAndroid.requestMultiple(
+    permissions as Permission[],
+  );
   const deniedPermission = Object.entries(result).find(
     ([, granted]) => granted !== PermissionsAndroid.RESULTS.GRANTED,
   );

@@ -5,7 +5,7 @@ import { Colors, Radius, Shadow, Spacing } from "../theme";
 type Props = {
   children: ReactNode;
   style?: ViewStyle;
-  variant?: "default" | "danger" | "safe";
+  variant?: "default" | "danger" | "safe" | "success";
 };
 
 export function GlassCard({ children, style, variant = "default" }: Props) {
@@ -14,7 +14,9 @@ export function GlassCard({ children, style, variant = "default" }: Props) {
       ? Colors.borderDanger
       : variant === "safe"
         ? "rgba(46,204,113,0.3)"
-        : Colors.border;
+        : variant === "success"
+          ? "rgba(46,213,115,0.4)"
+          : Colors.border;
 
   return (
     <View style={[styles.card, { borderColor }, Shadow.sm, style]}>

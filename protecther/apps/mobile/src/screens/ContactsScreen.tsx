@@ -6,22 +6,17 @@ import {
 } from "@protecther/contracts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { AppButton } from "../components/AppButton";
-import { AppInput } from "../components/AppInput";
-import { GlassCard } from "../components/GlassCard";
-import { Avatar } from "../components/Avatar";
-import { Badge } from "../components/Badge";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AppButton } from "../components/AppButton";
+import { AppInput } from "../components/AppInput";
+import { Avatar } from "../components/Avatar";
+import { Badge } from "../components/Badge";
+import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
-import { Colors, Typography, Spacing, Radius } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
+import { Colors, Radius, Spacing, Typography } from "../theme";
 
 type ContactItem = {
   id: string;
@@ -141,9 +136,7 @@ export function ContactsScreen(_props: Props) {
         setError("Resposta de aceite inválida");
         return;
       }
-      setMessage(
-        `✅ Vínculo ativo com ${body.data.link.owner.name}!`,
-      );
+      setMessage(`✅ Vínculo ativo com ${body.data.link.owner.name}!`);
       setInviteToken("");
       await refreshList();
     } finally {
@@ -189,7 +182,10 @@ export function ContactsScreen(_props: Props) {
         ) : (
           asOwner.map((c, i) => (
             <GlassCard key={c.id} style={styles.contactCard}>
-              <Avatar name={c.name} color={avatarColors[i % avatarColors.length]} />
+              <Avatar
+                name={c.name}
+                color={avatarColors[i % avatarColors.length]}
+              />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactName}>{c.name}</Text>
                 <Text style={styles.contactEmail}>{c.email}</Text>
@@ -204,9 +200,7 @@ export function ContactsScreen(_props: Props) {
       {/* As Contact */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🤝 Sou contato de</Text>
-        <Text style={styles.sectionDesc}>
-          Titulares que você protege
-        </Text>
+        <Text style={styles.sectionDesc}>Titulares que você protege</Text>
         {!loaded ? null : asContact.length === 0 ? (
           <Text style={styles.muted}>Nenhum vínculo como contato</Text>
         ) : (

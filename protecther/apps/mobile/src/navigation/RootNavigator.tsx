@@ -1,16 +1,17 @@
-import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useAuth } from "../auth/AuthContext";
-import { Colors, Typography } from "../theme";
 import { ActiveAlertScreen } from "../screens/ActiveAlertScreen";
 import { ContactAlertDetailScreen } from "../screens/ContactAlertDetailScreen";
 import { ContactAlertsFeedScreen } from "../screens/ContactAlertsFeedScreen";
 import { ContactsScreen } from "../screens/ContactsScreen";
+import { DeviceManagementScreen } from "../screens/DeviceManagementScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
 import { SosScreen } from "../screens/SosScreen";
+import { Colors, Typography } from "../theme";
 import type { AppStackParamList, AuthStackParamList } from "./types";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -45,7 +46,9 @@ const screenOptions = {
 
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator screenOptions={{ ...screenOptions, headerShown: false }}>
+    <AuthStack.Navigator
+      screenOptions={{ ...screenOptions, headerShown: false }}
+    >
       <AuthStack.Screen
         name="Login"
         component={LoginScreen}
@@ -62,7 +65,9 @@ function AuthNavigator() {
 
 function AppNavigator() {
   return (
-    <AppStack.Navigator screenOptions={{ ...screenOptions, headerShown: false }}>
+    <AppStack.Navigator
+      screenOptions={{ ...screenOptions, headerShown: false }}
+    >
       <AppStack.Screen
         name="Home"
         component={HomeScreen}
@@ -92,6 +97,11 @@ function AppNavigator() {
         name="ContactAlertDetail"
         component={ContactAlertDetailScreen}
         options={{ title: "Localização" }}
+      />
+      <AppStack.Screen
+        name="DeviceManagement"
+        component={DeviceManagementScreen}
+        options={{ title: "Dispositivos BLE" }}
       />
     </AppStack.Navigator>
   );

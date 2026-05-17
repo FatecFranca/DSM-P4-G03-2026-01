@@ -1,1 +1,30 @@
-{"root":"C:\\src\\pi4semestre\\protecther","reactNativePath":"C:\\src\\pi4semestre\\protecther\\node_modules\\react-native","dependencies":{"expo":{"root":"C:\\src\\pi4semestre\\protecther\\node_modules\\expo","name":"expo","platforms":{"android":{"sourceDir":"C:\\src\\pi4semestre\\protecther\\node_modules\\expo\\android","packageImportPath":"import expo.modules.ExpoModulesPackage;","packageInstance":"new ExpoModulesPackage()","buildTypes":[],"componentDescriptors":[],"cmakeListsPath":"C:/src/pi4semestre/protecther/node_modules/expo/android/build/generated/source/codegen/jni/CMakeLists.txt","cxxModuleCMakeListsModuleName":null,"cxxModuleCMakeListsPath":null,"cxxModuleHeaderName":null,"isPureCxxDependency":false}}}},"project":{"android":{"packageName":"com.sampledll.protecther","sourceDir":"C:\\src\\pi4semestre\\protecther\\android"}}}
+{
+  "root": "C:\\src\\pi4semestre\\protecther",
+  "reactNativePath": "C:\\src\\pi4semestre\\protecther\\node_modules\\react-native",
+  "dependencies": {
+    "expo": {
+      "root": "C:\\src\\pi4semestre\\protecther\\node_modules\\expo",
+      "name": "expo",
+      "platforms": {
+        "android": {
+          "sourceDir": "C:\\src\\pi4semestre\\protecther\\node_modules\\expo\\android",
+          "packageImportPath": "import expo.modules.ExpoModulesPackage;",
+          "packageInstance": "new ExpoModulesPackage()",
+          "buildTypes": [],
+          "componentDescriptors": [],
+          "cmakeListsPath": "C:/src/pi4semestre/protecther/node_modules/expo/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cxxModuleCMakeListsModuleName": null,
+          "cxxModuleCMakeListsPath": null,
+          "cxxModuleHeaderName": null,
+          "isPureCxxDependency": false
+        }
+      }
+    }
+  },
+  "project": {
+    "android": {
+      "packageName": "com.sampledll.protecther",
+      "sourceDir": "C:\\src\\pi4semestre\\protecther\\android"
+    }
+  }
+}

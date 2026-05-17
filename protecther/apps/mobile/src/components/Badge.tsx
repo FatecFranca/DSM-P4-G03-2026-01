@@ -1,5 +1,5 @@
-import { Text, View, StyleSheet } from "react-native";
-import { Colors, Typography, Spacing, Radius } from "../theme";
+import { StyleSheet, Text, View } from "react-native";
+import { Colors, Radius, Spacing, Typography } from "../theme";
 
 type Props = {
   label: string;

@@ -1,4 +1,10 @@
-import { StyleSheet, Text, TextInput, View, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { Colors, Radius, Spacing, Typography } from "../theme";
 
 type Props = {

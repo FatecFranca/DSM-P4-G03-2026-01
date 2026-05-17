@@ -14,16 +14,16 @@ import {
   Text,
   View,
 } from "react-native";
-import { AppButton } from "../components/AppButton";
-import { AppInput } from "../components/AppInput";
-import { GlassCard } from "../components/GlassCard";
-import { Badge } from "../components/Badge";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AppButton } from "../components/AppButton";
+import { AppInput } from "../components/AppInput";
+import { Badge } from "../components/Badge";
+import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import { logMobileTelemetry } from "../lib/telemetry";
-import { Colors, Typography, Spacing, Radius } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
+import { Colors, Radius, Spacing, Typography } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ActiveAlert">;
 
@@ -150,9 +150,7 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
   };
 
   const elapsed = alertData
-    ? Math.round(
-        (Date.now() - Date.parse(alertData.startedAt)) / 1000 / 60,
-      )
+    ? Math.round((Date.now() - Date.parse(alertData.startedAt)) / 1000 / 60)
     : 0;
 
   return (

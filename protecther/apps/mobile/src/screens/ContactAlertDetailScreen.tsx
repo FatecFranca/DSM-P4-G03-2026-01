@@ -14,16 +14,16 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
-import { AppButton } from "../components/AppButton";
-import { GlassCard } from "../components/GlassCard";
-import { Avatar } from "../components/Avatar";
-import { Badge } from "../components/Badge";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AppButton } from "../components/AppButton";
+import { Avatar } from "../components/Avatar";
+import { Badge } from "../components/Badge";
+import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import { logMobileTelemetry } from "../lib/telemetry";
-import { Colors, Typography, Spacing, Radius, Shadow } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
+import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ContactAlertDetail">;
 
@@ -138,10 +138,7 @@ export function ContactAlertDetailScreen({ route }: Props) {
   };
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-    >
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Avatar name={ownerName} size={56} color={Colors.danger} />
@@ -185,8 +182,8 @@ export function ContactAlertDetailScreen({ route }: Props) {
           </MapView>
           <View style={styles.mapOverlay}>
             <Text style={styles.mapOverlayText}>
-              📍 {points.length} ponto{points.length !== 1 ? "s" : ""} · Atualiza a
-              cada 5s
+              📍 {points.length} ponto{points.length !== 1 ? "s" : ""} ·
+              Atualiza a cada 5s
             </Text>
           </View>
         </View>

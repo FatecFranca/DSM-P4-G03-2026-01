@@ -11,15 +11,15 @@ import {
   Text,
   View,
 } from "react-native";
-import { GlassCard } from "../components/GlassCard";
-import { Avatar } from "../components/Avatar";
-import { Badge } from "../components/Badge";
-import { AppButton } from "../components/AppButton";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AppButton } from "../components/AppButton";
+import { Avatar } from "../components/Avatar";
+import { Badge } from "../components/Badge";
+import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
-import { Colors, Typography, Spacing, Radius, Shadow } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
+import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ContactAlertsFeed">;
 
@@ -45,9 +45,7 @@ function PulsingDot() {
     return () => loop.stop();
   }, [anim]);
 
-  return (
-    <Animated.View style={[styles.pulseDot, { opacity: anim }]} />
-  );
+  return <Animated.View style={[styles.pulseDot, { opacity: anim }]} />;
 }
 
 export function ContactAlertsFeedScreen({ navigation }: Props) {
@@ -107,16 +105,16 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const avatarColors = ["#E74C3C", "#6C3CE2", "#F39C12", "#2ECC71", "#3498DB"];
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-    >
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>🔔 Alertas</Text>
@@ -134,7 +132,10 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
 
       {/* Content */}
       {loading ? (
-        <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xxl }} />
+        <ActivityIndicator
+          color={Colors.primary}
+          style={{ marginTop: Spacing.xxl }}
+        />
       ) : items.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>✅</Text>
@@ -174,7 +175,9 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
 
                 <View style={styles.alertBadges}>
                   <Badge
-                    label={row.mode === "visible" ? "📢 Visível" : "🤫 Discreto"}
+                    label={
+                      row.mode === "visible" ? "📢 Visível" : "🤫 Discreto"
+                    }
                     variant={row.mode === "visible" ? "danger" : "neutral"}
                   />
                   <Badge

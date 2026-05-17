@@ -4,18 +4,14 @@ import {
 } from "@protecther/contracts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { AppButton } from "../components/AppButton";
-import { GlassCard } from "../components/GlassCard";
+import { StyleSheet, Text, View } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { AppButton } from "../components/AppButton";
+import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
-import { Colors, Typography, Spacing } from "../theme";
 import type { AppStackParamList } from "../navigation/types";
+import { Colors, Spacing, Typography } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Sos">;
 
@@ -60,8 +56,8 @@ export function SosScreen({ navigation }: Props) {
         <Text style={styles.icon}>🚨</Text>
         <Text style={styles.title}>Iniciar Alerta</Text>
         <Text style={styles.subtitle}>
-          Escolha o modo do alerta. Seus contatos de emergência serão notificados
-          imediatamente.
+          Escolha o modo do alerta. Seus contatos de emergência serão
+          notificados imediatamente.
         </Text>
       </View>
 
@@ -71,8 +67,8 @@ export function SosScreen({ navigation }: Props) {
           <Text style={styles.modeIcon}>📢</Text>
           <Text style={styles.modeTitle}>Modo Visível</Text>
           <Text style={styles.modeDesc}>
-            Alarme sonoro e visual para todos os seus contatos. Ideal quando você
-            precisa de atenção máxima.
+            Alarme sonoro e visual para todos os seus contatos. Ideal quando
+            você precisa de atenção máxima.
           </Text>
           <AppButton
             title="Ativar visível"
@@ -87,8 +83,8 @@ export function SosScreen({ navigation }: Props) {
           <Text style={styles.modeIcon}>🤫</Text>
           <Text style={styles.modeTitle}>Modo Discreto</Text>
           <Text style={styles.modeDesc}>
-            Notificação silenciosa para seus contatos. Ideal quando você não pode
-            chamar atenção do agressor.
+            Notificação silenciosa para seus contatos. Ideal quando você não
+            pode chamar atenção do agressor.
           </Text>
           <AppButton
             title="Ativar discreto"

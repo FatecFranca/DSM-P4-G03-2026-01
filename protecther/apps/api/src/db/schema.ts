@@ -240,3 +240,32 @@ export const pushDeliveryEvents = pgTable(
   },
   (table) => [index("push_delivery_events_alert_idx").on(table.alertId)],
 );
+
+export const bleDevices = pgTable(
+  "ble_devices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerUserId: uuid("owner_user_id")
+      .notNull()
+      .references(() => users.id),
+    deviceId: text("device_id").notNull(),
+    deviceName: text("device_name").notNull(),
+    serviceUuid: text("service_uuid").notNull(),
+    characteristicUuid: text("characteristic_uuid").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    lastConnectedAt: timestamp("last_connected_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("ble_devices_owner_idx").on(table.ownerUserId),
+    uniqueIndex("ble_devices_owner_device_uidx").on(
+      table.ownerUserId,
+      table.deviceId,
+    ),
+  ],
+);

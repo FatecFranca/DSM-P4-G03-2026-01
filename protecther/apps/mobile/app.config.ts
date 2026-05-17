@@ -18,7 +18,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: "protecther-mobile",
     ios: {
       ...config.ios,
-      bundleIdentifier: process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? "com.protecther.app",
+      bundleIdentifier:
+        process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? "com.protecther.app",
       infoPlist: {
         ...config.ios?.infoPlist,
         UIBackgroundModes: [
