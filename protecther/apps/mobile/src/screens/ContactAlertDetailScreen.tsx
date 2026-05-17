@@ -4,9 +4,10 @@ import {
 } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Platform,
   ScrollView,
   StyleSheet,
@@ -39,6 +40,9 @@ export function ContactAlertDetailScreen({ route }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [ackAt, setAckAt] = useState<string | null>(null);
   const [ackError, setAckError] = useState<string | null>(null);
+  const webViewRef = useRef<WebView>(null);
+  const [mapHtml, setMapHtml] = useState<string | null>(null);
+  const mapInit = useRef(false);
 
   const fetchIncremental = useCallback(async () => {
     const token = getAccessToken();
@@ -110,6 +114,18 @@ export function ContactAlertDetailScreen({ route }: Props) {
 
   const last = points.length > 0 ? points[points.length - 1] : null;
 
+  useEffect(() => {
+    if (!last) return;
+    if (!mapInit.current) {
+      mapInit.current = true;
+      setMapHtml(generateMapHtml(last.lat, last.lng));
+    } else {
+      webViewRef.current?.injectJavaScript(
+        `moveMarker(${last.lat}, ${last.lng})`,
+      );
+    }
+  }, [last]);
+
   const acknowledge = async () => {
     setAckError(null);
     const result = await apiFetchJson<unknown>(
@@ -151,21 +167,21 @@ export function ContactAlertDetailScreen({ route }: Props) {
         <Badge label="Ativo" variant="danger" />
       </View>
 
-      {/* Map via OpenStreetMap WebView */}
+      {/* Map via Leaflet WebView */}
       {loading && points.length === 0 ? (
         <View style={styles.mapPlaceholder}>
           <ActivityIndicator color={Colors.primary} size="large" />
           <Text style={styles.mapLoading}>Carregando localização…</Text>
         </View>
-      ) : last ? (
+      ) : mapHtml && last ? (
         <View style={styles.mapContainer}>
           <WebView
-            source={{
-              uri: `https://www.openstreetmap.org/export/embed.html?bbox=${last.lng - 0.01},${last.lat - 0.01},${last.lng + 0.01},${last.lat + 0.01}&layer=mapnik&marker=${last.lat},${last.lng}`,
-            }}
+            ref={webViewRef}
+            source={{ html: mapHtml }}
             style={styles.map}
             javaScriptEnabled={true}
             domStorageEnabled={true}
+            originWhitelist={["*"]}
           />
           <View style={styles.mapOverlay}>
             <Text style={styles.mapOverlayText}>
@@ -213,6 +229,33 @@ export function ContactAlertDetailScreen({ route }: Props) {
   );
 }
 
+function generateMapHtml(lat: number, lng: number): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *{margin:0;padding:0}
+    html,body,#map{width:100%;height:100%}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map=L.map('map',{zoomControl:true}).setView([${lat},${lng}],17);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      maxZoom:19,
+      attribution:'&copy; OpenStreetMap'
+    }).addTo(map);
+    var marker=L.marker([${lat},${lng}]).addTo(map);
+    function moveMarker(a,b){marker.setLatLng([a,b])}
+  </script>
+</body>
+</html>`;
+}
+
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
@@ -249,7 +292,7 @@ const styles = StyleSheet.create({
     ...Shadow.md,
   },
   map: {
-    height: 300,
+    height: Dimensions.get("window").height * 0.8,
   },
   mapOverlay: {
     backgroundColor: Colors.bgSecondary,
