@@ -7,6 +7,8 @@ const QUEUE_KEY = "protecther.location.queue.v1";
 /** Limite: ~2h a 5s no pior caso; descarta os mais antigos (documentado em docs/ARCHITECTURE.md). */
 export const LOCATION_QUEUE_MAX = 400;
 
+let isFlushing = false;
+
 export type QueuedLocationPoint = PostAlertLocationRequest & {
   alertId: string;
   dedupeKey: string;
@@ -72,48 +74,75 @@ export async function enqueueLocationPoint(
 export async function flushLocationQueue(
   getAccessToken: () => string | null,
 ): Promise<void> {
-  const q = await loadQueue();
-  if (q.length === 0) {
+  if (isFlushing) {
     return;
   }
-  const token = getAccessToken();
-  if (!token) {
-    return;
-  }
-  q.sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt));
-  const remaining: QueuedLocationPoint[] = [];
-  let backoff = 2000;
-  for (const item of q) {
-    const path = `/alerts/${encodeURIComponent(item.alertId)}/location`;
-    try {
-      const res = await apiFetchJson<unknown>(path, {
-        method: "POST",
-        body: JSON.stringify({
-          lat: item.lat,
-          lng: item.lng,
-          accuracy: item.accuracy,
-          speed: item.speed,
-          heading: item.heading,
-          capturedAt: item.capturedAt,
-        }),
-        accessToken: token,
-      });
-      if (!res.ok) {
+  isFlushing = true;
+
+  try {
+    const q = await loadQueue();
+    if (q.length === 0) {
+      return;
+    }
+    const token = getAccessToken();
+    if (!token) {
+      return;
+    }
+    q.sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt));
+    const remaining: QueuedLocationPoint[] = [];
+    let backoff = 2000;
+    let rateLimited = false;
+
+    for (const item of q) {
+      if (rateLimited) {
+        remaining.push(item);
+        continue;
+      }
+
+      const path = `/alerts/${encodeURIComponent(item.alertId)}/location`;
+      try {
+        const res = await apiFetchJson<unknown>(path, {
+          method: "POST",
+          body: JSON.stringify({
+            lat: item.lat,
+            lng: item.lng,
+            accuracy: item.accuracy,
+            speed: item.speed,
+            heading: item.heading,
+            capturedAt: item.capturedAt,
+          }),
+          accessToken: token,
+        });
+        if (!res.ok) {
+          if (res.status === 429) {
+            rateLimited = true;
+            remaining.push(item, ...q.slice(q.indexOf(item) + 1));
+            break;
+          }
+          remaining.push(item);
+          await new Promise((r) => setTimeout(r, jitterMs(backoff)));
+          backoff = Math.min(backoff * 2, 60_000);
+        }
+      } catch {
         remaining.push(item);
         await new Promise((r) => setTimeout(r, jitterMs(backoff)));
         backoff = Math.min(backoff * 2, 60_000);
       }
-    } catch {
-      remaining.push(item);
-      await new Promise((r) => setTimeout(r, jitterMs(backoff)));
-      backoff = Math.min(backoff * 2, 60_000);
     }
-  }
-  await saveQueue(remaining);
-  if (remaining.length < q.length) {
-    logMobileTelemetry("location_queue_flushed", {
-      remaining: remaining.length,
-    });
+
+    await saveQueue(remaining);
+    if (remaining.length < q.length) {
+      logMobileTelemetry("location_queue_flushed", {
+        remaining: remaining.length,
+      });
+    }
+    if (rateLimited) {
+      logMobileTelemetry("location_flush_rate_limited", {
+        remaining: remaining.length,
+      });
+    }
+  } finally {
+    isFlushing = false;
   }
 }
 

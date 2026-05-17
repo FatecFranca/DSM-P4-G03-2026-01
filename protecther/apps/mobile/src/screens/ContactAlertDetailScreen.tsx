@@ -13,7 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import { WebView } from "react-native-webview";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { AppButton } from "../components/AppButton";
@@ -151,64 +151,38 @@ export function ContactAlertDetailScreen({ route }: Props) {
         <Badge label="Ativo" variant="danger" />
       </View>
 
-      {/* Map */}
+      {/* Map via OpenStreetMap WebView */}
       {loading && points.length === 0 ? (
         <View style={styles.mapPlaceholder}>
           <ActivityIndicator color={Colors.primary} size="large" />
           <Text style={styles.mapLoading}>Carregando localização…</Text>
         </View>
-      ) : Platform.OS !== "web" && last ? (
+      ) : last ? (
         <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            region={{
-              latitude: last.lat,
-              longitude: last.lng,
-              latitudeDelta: 0.02,
-              longitudeDelta: 0.02,
+          <WebView
+            source={{
+              uri: `https://www.openstreetmap.org/export/embed.html?bbox=${last.lng - 0.01},${last.lat - 0.01},${last.lng + 0.01},${last.lat + 0.01}&layer=mapnik&marker=${last.lat},${last.lng}`,
             }}
-          >
-            {coords.length > 1 ? (
-              <Polyline
-                coordinates={coords}
-                strokeColor={Colors.danger}
-                strokeWidth={3}
-              />
-            ) : null}
-            <Marker
-              coordinate={{ latitude: last.lat, longitude: last.lng }}
-              title="Última posição"
-            />
-          </MapView>
+            style={styles.map}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+          />
           <View style={styles.mapOverlay}>
             <Text style={styles.mapOverlayText}>
               📍 {points.length} ponto{points.length !== 1 ? "s" : ""} ·
-              Atualiza a cada 5s
+              OpenStreetMap
             </Text>
           </View>
         </View>
       ) : null}
 
-      {/* Fallback: text points */}
-      {Platform.OS === "web" || !last ? (
+      {/* Fallback: text points when no location yet */}
+      {!last ? (
         <GlassCard>
           <Text style={styles.pointsTitle}>📍 Pontos de localização</Text>
-          {points.length === 0 ? (
-            <Text style={styles.pointsEmpty}>
-              Aguardando pontos de localização…
-            </Text>
-          ) : (
-            points.slice(-6).map((p) => (
-              <View key={p.id} style={styles.pointRow}>
-                <Text style={styles.pointTime}>
-                  {formatDateTime(p.capturedAt)}
-                </Text>
-                <Text style={styles.pointCoords}>
-                  {p.lat.toFixed(5)}, {p.lng.toFixed(5)}
-                </Text>
-              </View>
-            ))
-          )}
+          <Text style={styles.pointsEmpty}>
+            Aguardando pontos de localização…
+          </Text>
         </GlassCard>
       ) : null}
 

@@ -6,6 +6,7 @@ export type MobileTelemetryEvent =
   | "location_queue_enqueued"
   | "location_queue_flushed"
   | "location_queue_depth"
+  | "location_flush_rate_limited"
   | "alert_acknowledged";
 
 /** Sem PII: apenas códigos/ids já expostos ao cliente. */

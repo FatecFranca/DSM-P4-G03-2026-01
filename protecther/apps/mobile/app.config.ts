@@ -59,7 +59,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           locationWhenInUsePermission:
             "Localização é usada durante um alerta ativo para avisar seus contatos.",
           locationAlwaysAndWhenInUsePermission:
-            "Com “Sempre”, o app pode enviar sua posição mesmo em segundo plano durante o alerta.",
+            "Com 'Sempre', o app pode enviar sua posição mesmo em segundo plano durante o alerta.",
           isAndroidBackgroundLocationEnabled: true,
         },
       ],

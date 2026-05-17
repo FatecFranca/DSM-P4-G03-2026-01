@@ -59,7 +59,7 @@ function isDuressCancel(pin: string | undefined): boolean {
 }
 
 const LOCATION_INGEST_MAX_PER_MINUTE = Number(
-  process.env.ALERT_LOCATION_RATE_MAX_PER_MINUTE ?? 90,
+  process.env.ALERT_LOCATION_RATE_MAX_PER_MINUTE ?? 300,
 );
 
 const CAPTURE_REGRESSION_MS = Number(
