@@ -3,8 +3,9 @@ import {
   StartAlertResponseSchema,
 } from "@protecther/contracts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import * as Notifications from "expo-notifications";
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, Vibration, View } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { AppButton } from "../components/AppButton";
@@ -19,6 +20,25 @@ export function SosScreen({ navigation }: Props) {
   const { getAccessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    Notifications.setNotificationChannelAsync("alert", {
+      name: "Alertas de Perigo",
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: "default",
+      vibrationPattern: [0, 300, 100, 300, 100, 300],
+      enableVibrate: true,
+    }).catch(() => {});
+  }, []);
 
   const startAlert = async (mode: "visible" | "discreet") => {
     setError(null);
@@ -42,6 +62,24 @@ export function SosScreen({ navigation }: Props) {
       if (!body.success) {
         setError("Resposta inválida da API");
         return;
+      }
+      Vibration.vibrate([0, 300, 100, 300, 100, 300]);
+      try {
+        const perms = await Notifications.getPermissionsAsync();
+        if (!perms.granted) {
+          await Notifications.requestPermissionsAsync();
+        }
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "🚨 Alerta de Perigo Ativo",
+            body: `Alerta ${mode === "visible" ? "visível" : "discreto"} iniciado. Seus contatos estão sendo notificados.`,
+            sound: "default",
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+          },
+          trigger: null,
+        });
+      } catch {
+        /* notificação pode falhar em ambiente sem suporte — não bloquear */
       }
       navigation.replace("ActiveAlert", { alertId: body.data.alert.id });
     } finally {
