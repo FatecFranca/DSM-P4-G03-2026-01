@@ -1,0 +1,39 @@
+{
+  "name": "protecther-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fastify/cors": "10.0.2",
+    "@fastify/jwt": "9.0.4",
+    "@fastify/rate-limit": "10.2.2",
+    "@protecther/contracts": "workspace:*",
+    "bcryptjs": "2.4.3",
+    "dotenv": "16.4.7",
+    "drizzle-orm": "0.40.0",
+    "fastify": "5.2.1",
+    "firebase-admin": "13.0.2",
+    "postgres": "3.4.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/bcryptjs": "2.4.6",
+    "@types/node": "22.13.10",
+    "drizzle-kit": "0.30.5",
+    "tsx": "4.19.3",
+    "typescript": "5.9.2",
+    "vitest": "3.0.9"
+  }
+}
