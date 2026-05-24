@@ -180,28 +180,30 @@ a {
 }
 
 .dashboard {
-  padding: 40px 0 36px;
+  padding: 28px 0 30px;
 }
 
 .dashboard-inner {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 20px;
+  max-width: 1020px;
+  margin: 0 auto;
 }
 
 .panel {
   position: relative;
-  padding: 30px 28px 32px;
-  border-radius: 30px;
+  padding: 22px 22px 24px;
+  border-radius: 24px;
   background: rgba(255, 248, 250, 0.96);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
 
 .panel-title {
-  margin: 0 0 24px;
+  margin: 0 0 18px;
   text-align: center;
-  font-size: 36px;
+  font-size: 30px;
   color: var(--text);
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -210,22 +212,22 @@ a {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+  gap: 16px;
 }
 
 .stat-card {
   position: relative;
-  min-height: 164px;
-  padding: 22px 18px 18px;
-  border-radius: 28px;
+  min-height: 132px;
+  padding: 16px 14px 14px;
+  border-radius: 22px;
   background: rgba(255, 252, 253, 0.98);
   box-shadow: var(--soft-shadow);
   overflow: hidden;
 }
 
 .stat-icon {
-  width: 74px;
-  height: 74px;
+  width: 56px;
+  height: 56px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -234,14 +236,14 @@ a {
 }
 
 .stat-icon svg {
-  width: 42px;
-  height: 42px;
+  width: 30px;
+  height: 30px;
   fill: currentColor;
 }
 
 .stat-body {
   position: absolute;
-  inset: 22px 18px 18px 112px;
+  inset: 16px 14px 14px 82px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -249,25 +251,25 @@ a {
 
 .stat-body h2 {
   margin: 0;
-  max-width: 160px;
-  font-size: clamp(1.05rem, 1.7vw, 1.6rem);
+  max-width: 136px;
+  font-size: clamp(0.85rem, 1.2vw, 1.1rem);
   line-height: 1.2;
   color: var(--text);
   font-weight: 700;
 }
 
 .stat-body strong {
-  font-size: clamp(2.8rem, 4vw, 4.2rem);
+  font-size: clamp(2rem, 2.8vw, 2.9rem);
   color: var(--text);
   line-height: 1;
 }
 
 .stat-blob {
   position: absolute;
-  right: -16px;
-  bottom: -24px;
-  width: 188px;
-  height: 116px;
+  right: -12px;
+  bottom: -18px;
+  width: 136px;
+  height: 86px;
   border-radius: 60% 42% 0 0;
   background: rgba(245, 199, 215, 0.58);
 }
@@ -275,14 +277,14 @@ a {
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 26px;
+  gap: 16px;
   align-items: stretch;
 }
 
 .chart-card {
-  min-height: 360px;
-  padding: 26px 24px 22px;
-  border-radius: 26px;
+  min-height: 300px;
+  padding: 18px 18px 16px;
+  border-radius: 20px;
   background: rgba(255, 252, 253, 0.98);
   box-shadow: var(--soft-shadow);
 }
@@ -290,21 +292,21 @@ a {
 .chart-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  min-height: 42px;
+  gap: 8px;
+  margin-bottom: 6px;
+  min-height: 34px;
 }
 
 .chart-head h2 {
   margin: 0;
-  font-size: clamp(1.05rem, 1.45vw, 1.45rem);
+  font-size: clamp(0.9rem, 1.1vw, 1.1rem);
   color: var(--text);
   font-weight: 700;
 }
 
 .chart-mark {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   color: #e38fa6;
   display: inline-grid;
   place-items: center;
@@ -318,13 +320,13 @@ a {
 
 .badge {
   margin-left: auto;
-  padding: 10px 18px;
-  border-radius: 18px;
+  padding: 6px 12px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #de97a2 0%, #d98c96 100%);
   color: var(--white);
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  box-shadow: 0 10px 18px rgba(208, 98, 124, 0.24);
+  box-shadow: 0 6px 12px rgba(208, 98, 124, 0.2);
 }
 
 .line-chart {
@@ -343,33 +345,33 @@ a {
 .donut-percent,
 .donut-label {
   fill: var(--muted);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .axis-labels text {
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .line-points circle {
   fill: #f8f2f5;
   stroke: #ed89a0;
-  stroke-width: 3;
+  stroke-width: 2.5;
 }
 
 .donut-layout {
   display: grid;
-  grid-template-columns: 68px 1fr;
-  gap: 12px;
+  grid-template-columns: 54px 1fr;
+  gap: 8px;
   align-items: center;
-  margin-top: 14px;
+  margin-top: 8px;
 }
 
 .donut-stats {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  font-size: 1.05rem;
+  gap: 14px;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--muted);
 }
@@ -381,14 +383,14 @@ a {
 
 .donut-chart {
   width: 100%;
-  max-width: 440px;
+  max-width: 350px;
   height: auto;
 }
 
 .donut-ring {
   fill: none;
   stroke: #f0dbe2;
-  stroke-width: 54;
+  stroke-width: 44;
 }
 
 .donut-hole {
@@ -397,7 +399,7 @@ a {
 
 .donut-segment {
   fill: none;
-  stroke-width: 54;
+  stroke-width: 44;
   stroke-linecap: butt;
   transform: rotate(-90deg);
   transform-origin: 180px 132px;
@@ -427,7 +429,7 @@ a {
 }
 
 .donut-label.primary {
-  font-size: 17px;
+  font-size: 14px;
 }
 
 .pct-a {
@@ -441,7 +443,7 @@ a {
 }
 
 .panel-table {
-  padding: 28px 22px 32px;
+  padding: 18px 14px 20px;
 }
 
 .table-shell {
@@ -456,24 +458,24 @@ a {
   display: grid;
   grid-template-columns: 1fr 1fr 2.5fr 1.25fr;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .table-head {
-  padding: 28px 34px;
+  padding: 16px 18px;
   background: rgba(255, 252, 253, 0.98);
   box-shadow: 0 8px 14px rgba(160, 123, 138, 0.12);
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   color: var(--text);
   font-weight: 600;
 }
 
 .table-row {
-  min-height: 188px;
-  padding: 26px 34px 22px;
+  min-height: 132px;
+  padding: 14px 18px 14px;
   border-top: 1px solid rgba(180, 147, 160, 0.18);
   color: var(--text);
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 
@@ -484,18 +486,18 @@ a {
 .location-cell {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
 
 .location-line {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .mini-pin {
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   color: #f39caf;
   flex: 0 0 auto;
 }
@@ -507,9 +509,9 @@ a {
 }
 
 .map-card {
-  width: min(100%, 310px);
+  width: min(100%, 240px);
   height: auto;
-  margin-left: 74px;
+  margin-left: 44px;
   display: block;
 }
 
@@ -561,7 +563,7 @@ section[id] {
   }
 
   .panel {
-    padding: 24px 20px 26px;
+    padding: 18px 16px 20px;
   }
 
   .table-head,
@@ -580,16 +582,16 @@ section[id] {
   }
 
   .dashboard {
-    padding: 22px 0 28px;
+    padding: 16px 0 22px;
   }
 
   .panel {
-    padding: 22px 16px 24px;
+    padding: 16px 12px 18px;
     border-radius: 24px;
   }
 
   .panel-title {
-    font-size: 28px;
+    font-size: 24px;
   }
 
   .stat-card,
