@@ -5,6 +5,7 @@ import Fastify from "fastify";
 import { startAlertEscalationScheduler } from "./jobs/alertEscalationTick.js";
 import { registerAlertRoutes } from "./routes/alerts.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerEmergencyRoutes } from "./routes/emergency.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -55,6 +56,7 @@ export async function buildServer() {
 
   await registerHealthRoutes(app);
   await registerAuthRoutes(app);
+  await registerDashboardRoutes(app);
 
   const emailSender = createEmergencyInviteEmailSender(app.log);
   const contactsPush = createAlertContactsPushNotifier(app.log);
@@ -101,6 +103,7 @@ export async function buildServer() {
     app.log,
     contactsPush,
   );
+
   app.addHook("onClose", async () => {
     stopEscalationScheduler();
   });
