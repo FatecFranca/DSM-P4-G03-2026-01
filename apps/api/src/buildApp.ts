@@ -1,3 +1,7 @@
+import { createReadStream } from "node:fs";
+import { access, stat } from "node:fs/promises";
+import { extname, join, normalize, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import cors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
@@ -57,6 +61,54 @@ export async function buildServer() {
   await registerHealthRoutes(app);
   await registerAuthRoutes(app);
   await registerDashboardRoutes(app);
+
+  // --- serve arquivos estáticos da pasta web/ ---
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = normalize(join(__filename, ".."));
+  const webRoot = resolve(__dirname, "..", "..", "..", "web");
+
+  const MIME: Record<string, string> = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
+  };
+
+  app.get("/*", async (request, reply) => {
+    // só responde a paths que parecem arquivo (têm extensão) ou são raiz ""
+    const reqPath = (request.params as { "*": string })["*"] ?? "";
+    const fileName = reqPath === "" ? "index.html" : reqPath;
+
+    // bloqueia path traversal
+    const safe = normalize(fileName);
+    if (safe.startsWith("..") || safe.includes("~")) {
+      return reply.status(400).send("Bad request");
+    }
+
+    const absolute = join(webRoot, safe);
+
+    try {
+      await access(absolute);
+      const stats = await stat(absolute);
+      if (!stats.isFile()) {
+        return reply.status(404).send("Not found");
+      }
+
+      const ext = extname(absolute).toLowerCase();
+      const contentType = MIME[ext] ?? "application/octet-stream";
+
+      reply.header("content-type", contentType);
+      return reply.send(createReadStream(absolute));
+    } catch {
+      // deixa o Fastify seguir para a próxima rota (API)
+      return reply.status(404).send("Not found");
+    }
+  });
 
   const emailSender = createEmergencyInviteEmailSender(app.log);
   const contactsPush = createAlertContactsPushNotifier(app.log);
