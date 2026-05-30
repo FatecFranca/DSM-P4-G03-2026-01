@@ -1,0 +1,1 @@
+ALTER TABLE "alert_locations" ADD COLUMN "label" text;

@@ -16,7 +16,8 @@
         <nav class="main-nav" aria-label="Navegação principal">
           <ul class="nav-list">
             <li class="nav-item"><a href="#inicio">Inicio</a></li>
-            <li class="nav-item"><a href="#graficos">Como Funciona</a></li>
+            <li class="nav-item"><a href="#como-funciona">Como Funciona</a></li>
+            <li class="nav-item"><a href="#frequencia">Frequência</a></li>
             <li class="nav-item"><a href="#sobre">Sobre</a></li>
           </ul>
         </nav>
@@ -80,201 +81,163 @@
         </section>
 
         <section
-          class="panel panel-charts"
-          aria-labelledby="graficos-title"
-          id="graficos"
+          class="panel panel-flow"
+          aria-labelledby="como-funciona-title"
+          id="como-funciona"
         >
-          <h1 class="panel-title" id="graficos-title">Gráficos</h1>
+          <h1 class="panel-title" id="como-funciona-title">
+            Como Funciona
+          </h1>
 
-          <div class="charts-grid">
-            <article class="chart-card">
-              <div class="chart-head">
-                <span class="chart-mark" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" role="presentation">
-                    <path
-                      d="M3 17h18M5 15l3-4 4 3 4-6 3 2"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <circle cx="8" cy="11" r="1.4" />
-                    <circle cx="12" cy="14" r="1.4" />
-                    <circle cx="16" cy="8" r="1.4" />
-                  </svg>
-                </span>
-                <h2>Ativações diárias</h2>
-                <span class="badge">+22</span>
-              </div>
-              <svg
-                class="line-chart"
-                viewBox="0 0 520 285"
-                aria-label="Ativações diárias"
-              >
-                <defs>
-                  <linearGradient id="lineGlow" x1="0" x2="0" y1="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stop-color="#f3a7b9"
-                      stop-opacity="0.42"
-                    />
-                    <stop
-                      offset="100%"
-                      stop-color="#f3a7b9"
-                      stop-opacity="0.03"
-                    />
-                  </linearGradient>
-                </defs>
-                <g class="grid-lines">
-                  <path
-                    d="M54 30H470M54 70H470M54 110H470M54 150H470M54 190H470M54 230H470"
-                  />
-                  <path
-                    d="M54 30V230M94 30V230M134 30V230M174 30V230M214 30V230M254 30V230M294 30V230M334 30V230M374 30V230M414 30V230M454 30V230"
-                  />
-                </g>
-                <g class="axis-labels">
-                  <text x="28" y="233">0</text>
-                  <text x="24" y="193">6</text>
-                  <text x="18" y="153">15</text>
-                  <text x="18" y="113">20</text>
-                  <text x="18" y="73">22</text>
-                  <text x="54" y="258">1</text>
-                  <text x="94" y="258">2</text>
-                  <text x="134" y="258">5</text>
-                  <text x="174" y="258">4</text>
-                  <text x="214" y="258">5</text>
-                  <text x="254" y="258">6</text>
-                  <text x="294" y="258">7</text>
-                  <text x="334" y="258">8</text>
-                  <text x="414" y="258">9</text>
-                  <text x="454" y="258">17</text>
-                </g>
-                <path
-                  d="M54 230 L94 205 L134 190 L174 145 L214 176 L254 144 L294 88 L334 106 L374 121 L414 92 L454 74"
-                  fill="none"
-                  stroke="url(#lineGlow)"
-                  stroke-width="58"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  opacity="0.22"
-                />
-                <path
-                  d="M54 230 L94 205 L134 190 L174 145 L214 176 L254 144 L294 88 L334 106 L374 121 L414 92 L454 74"
-                  fill="none"
-                  stroke="#ea8ea1"
-                  stroke-width="4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <g class="line-points">
-                  <circle cx="54" cy="230" r="6" />
-                  <circle cx="94" cy="205" r="6" />
-                  <circle cx="134" cy="190" r="6" />
-                  <circle cx="174" cy="145" r="6" />
-                  <circle cx="214" cy="176" r="6" />
-                  <circle cx="254" cy="144" r="6" />
-                  <circle cx="294" cy="88" r="6" />
-                  <circle cx="334" cy="106" r="6" />
-                  <circle cx="374" cy="121" r="6" />
-                  <circle cx="414" cy="92" r="6" />
-                  <circle cx="454" cy="74" r="6" />
-                </g>
-              </svg>
-            </article>
+          <p class="flow-subtitle">
+            O ciclo completo de um alerta — do acionamento ao monitoramento
+          </p>
 
-            <article class="chart-card">
-              <div class="chart-head">
-                <span class="chart-mark" aria-hidden="true">
+          <div class="pipeline">
+            <!-- Step 1 -->
+            <div class="pipeline-step" id="step-jewel">
+              <div class="pipeline-node">
+                <span class="pipeline-num">1</span>
+                <div class="pipeline-icon">
                   <svg viewBox="0 0 24 24" role="presentation">
-                    <path
-                      d="M12 3a9 9 0 1 0 9 9"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                    />
-                    <path
-                      d="M12 12l6-6"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                </span>
-                <h2>Localizações mais frequentes</h2>
-              </div>
-              <div class="donut-layout">
-                <div class="donut-stats" aria-hidden="true">
-                  <span>43%</span>
-                  <span>37%</span>
-                  <span>22%</span>
-                  <span>10%</span>
-                </div>
-                <div
-                  class="donut-wrap"
-                  aria-label="Localizações mais frequentes"
-                >
-                  <svg class="donut-chart" viewBox="0 0 360 260" role="img">
-                    <defs>
-                      <linearGradient id="donutA" x1="0" x2="1" y1="0" y2="1">
-                        <stop offset="0%" stop-color="#f6b4c0" />
-                        <stop offset="100%" stop-color="#e08ca3" />
-                      </linearGradient>
-                      <linearGradient id="donutB" x1="0" x2="1" y1="0" y2="1">
-                        <stop offset="0%" stop-color="#d08fb8" />
-                        <stop offset="100%" stop-color="#bf6e98" />
-                      </linearGradient>
-                      <linearGradient id="donutC" x1="0" x2="1" y1="0" y2="1">
-                        <stop offset="0%" stop-color="#b77aa8" />
-                        <stop offset="100%" stop-color="#a9658d" />
-                      </linearGradient>
-                      <linearGradient id="donutD" x1="0" x2="1" y1="0" y2="1">
-                        <stop offset="0%" stop-color="#ebb6d0" />
-                        <stop offset="100%" stop-color="#e29bb8" />
-                      </linearGradient>
-                    </defs>
-                    <circle class="donut-ring" cx="180" cy="132" r="78" />
-                    <circle
-                      class="donut-segment segment-a"
-                      cx="180"
-                      cy="132"
-                      r="78"
-                    />
-                    <circle
-                      class="donut-segment segment-b"
-                      cx="180"
-                      cy="132"
-                      r="78"
-                    />
-                    <circle
-                      class="donut-segment segment-c"
-                      cx="180"
-                      cy="132"
-                      r="78"
-                    />
-                    <circle
-                      class="donut-segment segment-d"
-                      cx="180"
-                      cy="132"
-                      r="78"
-                    />
-                    <circle class="donut-hole" cx="180" cy="132" r="38" />
-                    <text x="274" y="118" class="donut-label primary">
-                      Faculdade
-                    </text>
-                    <text x="274" y="168" class="donut-label">Academia</text>
-                    <text x="274" y="212" class="donut-label">Shopping</text>
-                    <text x="92" y="88" class="donut-percent pct-a">39%</text>
-                    <text x="76" y="174" class="donut-percent pct-b">15%</text>
-                    <text x="138" y="206" class="donut-percent pct-c">16%</text>
-                    <text x="188" y="80" class="donut-percent pct-d">16%</text>
+                    <path d="M12 2L9 8l-7 2 5 5-1 7 6-3 6 3-1-7 5-5-7-2-3-6z" fill="currentColor"/>
                   </svg>
                 </div>
               </div>
-            </article>
+              <div class="pipeline-body">
+                <h3>Toque na Joia</h3>
+                <p>A usuária pressiona 3x o dispositivo BLE. O sinal é captado pelo app via Bluetooth e um alerta é registrado.</p>
+                <div class="pipeline-data" id="step1-data">
+                  <span class="pulse"></span>
+                  <span>Aguardando dados...</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pipeline-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 12h16M13 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="pipeline-step" id="step-location">
+              <div class="pipeline-node">
+                <span class="pipeline-num">2</span>
+                <div class="pipeline-icon">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M12 2C8.14 2 5 5.14 5 9c0 4.83 7 13 7 13s7-8.17 7-13c0-3.86-3.14-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z" fill="currentColor"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="pipeline-body">
+                <h3>Localização Enviada</h3>
+                <p>O app captura a posição GPS e envia para a API em tempo real. Cada ponto é registrado com precisão de metros.</p>
+                <div class="pipeline-data" id="step2-data">
+                  <span class="pulse"></span>
+                  <span>Aguardando dados...</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pipeline-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 12h16M13 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="pipeline-step" id="step-contact">
+              <div class="pipeline-node">
+                <span class="pipeline-num">3</span>
+                <div class="pipeline-icon">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.8 12.8 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.8 12.8 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="pipeline-body">
+                <h3>Contatos Notificados</h3>
+                <p>Push notifications são enviadas aos contatos de emergência. Se ninguém confirmar, o alerta escala automaticamente.</p>
+                <div class="pipeline-data" id="step3-data">
+                  <span class="pulse"></span>
+                  <span>Aguardando dados...</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pipeline-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 12h16M13 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="pipeline-step" id="step-dashboard">
+              <div class="pipeline-node">
+                <span class="pipeline-num">4</span>
+                <div class="pipeline-icon">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <rect x="3" y="3" width="7" height="7" rx="1" fill="currentColor"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1" fill="currentColor"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1" fill="currentColor"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1" fill="currentColor"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="pipeline-body">
+                <h3>Dashboard em Tempo Real</h3>
+                <p>O administrador acompanha cada alerta ativo: localização no mapa, tempo de resposta e status das notificações.</p>
+                <div class="pipeline-data" id="step4-data">
+                  <span class="pulse"></span>
+                  <span>Aguardando dados...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Último alerta em destaque -->
+          <div class="live-alert" id="live-alert">
+            <div class="live-alert-head">
+              <span class="live-dot" aria-hidden="true"></span>
+              <strong>Último alerta em tempo real</strong>
+            </div>
+            <div class="live-alert-body" id="live-alert-body">
+              Carregando...
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="panel panel-frequency"
+          id="frequencia"
+          aria-labelledby="frequencia-title"
+        >
+          <h1 class="panel-title" id="frequencia-title">
+            Frequência de Acionamentos
+          </h1>
+
+          <p class="flow-subtitle">
+            Locais e horários com mais ocorrências de alerta
+          </p>
+
+          <!-- Gráfico de barras -->
+          <div class="freq-chart-container">
+            <div id="freq-chart" class="freq-chart-wrapper">
+              <svg class="freq-chart-svg" viewBox="0 0 720 300" aria-label="Carregando gráfico..." role="img"></svg>
+            </div>
+          </div>
+
+          <div
+            class="table-shell freq-table"
+            role="table"
+            aria-label="Frequência de acionamentos"
+          >
+            <div class="table-head freq-head" role="row">
+              <div role="columnheader">Data</div>
+              <div role="columnheader">Hora (pico)</div>
+              <div role="columnheader">Local</div>
+              <div role="columnheader">Dia</div>
+              <div role="columnheader">Acionamentos</div>
+            </div>
+
+            <div id="freq-tbody">
+              <!-- Preenchido dinamicamente pelo dashboard.js -->
+            </div>
           </div>
         </section>
 
@@ -299,134 +262,8 @@
               <div role="columnheader">Tempo de chegada</div>
             </div>
 
-            <div class="table-row" role="row">
-              <div role="cell">16/04/2026</div>
-              <div role="cell">21:42</div>
-              <div role="cell" class="location-cell">
-                <div class="location-line">
-                  <span class="mini-pin" aria-hidden="true"
-                    ><svg viewBox="0 0 24 24" role="presentation">
-                      <path
-                        d="M12 2C8.14 2 5 5.14 5 9c0 4.83 7 13 7 13s7-8.17 7-13c0-3.86-3.14-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"
-                      /></svg
-                  ></span>
-                  <span>Rua João Pedro, Franca, SP</span>
-                </div>
-                <svg class="map-card" viewBox="0 0 310 108" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="mapBg" x1="0" x2="1" y1="0" y2="1">
-                      <stop offset="0%" stop-color="#fdf4f7" />
-                      <stop offset="100%" stop-color="#f5e4ea" />
-                    </linearGradient>
-                  </defs>
-                  <rect width="310" height="108" rx="8" fill="url(#mapBg)" />
-                  <path
-                    d="M0 24H88M104 12V108M168 0V108M228 26H310M22 84H310"
-                    stroke="#ead3db"
-                    stroke-width="4"
-                    stroke-linecap="round"
-                    opacity="0.95"
-                  />
-                  <path
-                    d="M18 64L68 48L98 24L140 37L170 20L200 53L234 36L274 18"
-                    stroke="#ffffff"
-                    stroke-width="8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    opacity="0.82"
-                  />
-                  <path
-                    d="M48 73L89 59L137 69L176 46L224 55L265 36"
-                    stroke="#d8b8c6"
-                    stroke-width="5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    opacity="0.55"
-                  />
-                  <path
-                    d="M152 20l12 17 15 5 8 16-7 15-14 5-14-6-7-14 5-17z"
-                    fill="#c8d9e8"
-                    opacity="0.45"
-                  />
-                  <circle
-                    cx="151"
-                    cy="78"
-                    r="18"
-                    fill="#df7e96"
-                    opacity="0.78"
-                  />
-                  <path
-                    d="M151 69c-5.1 0-9.2 4.1-9.2 9.2 0 7.8 9.2 16.8 9.2 16.8s9.2-9 9.2-16.8c0-5.1-4.1-9.2-9.2-9.2Zm0 13.2a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z"
-                    fill="#fff"
-                  />
-                </svg>
-              </div>
-              <div role="cell">1 min 44 seg</div>
-            </div>
-
-            <div class="table-row" role="row">
-              <div role="cell">16/04/2026</div>
-              <div role="cell">21:42</div>
-              <div role="cell" class="location-cell">
-                <div class="location-line">
-                  <span class="mini-pin" aria-hidden="true"
-                    ><svg viewBox="0 0 24 24" role="presentation">
-                      <path
-                        d="M12 2C8.14 2 5 5.14 5 9c0 4.83 7 13 7 13s7-8.17 7-13c0-3.86-3.14-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"
-                      /></svg
-                  ></span>
-                  <span>Rua João Pedro, Franca, SP</span>
-                </div>
-                <svg class="map-card" viewBox="0 0 310 108" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="mapBg2" x1="0" x2="1" y1="0" y2="1">
-                      <stop offset="0%" stop-color="#fdf4f7" />
-                      <stop offset="100%" stop-color="#f5e4ea" />
-                    </linearGradient>
-                  </defs>
-                  <rect width="310" height="108" rx="8" fill="url(#mapBg2)" />
-                  <path
-                    d="M0 24H88M104 12V108M168 0V108M228 26H310M22 84H310"
-                    stroke="#ead3db"
-                    stroke-width="4"
-                    stroke-linecap="round"
-                    opacity="0.95"
-                  />
-                  <path
-                    d="M18 64L68 48L98 24L140 37L170 20L200 53L234 36L274 18"
-                    stroke="#ffffff"
-                    stroke-width="8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    opacity="0.82"
-                  />
-                  <path
-                    d="M48 73L89 59L137 69L176 46L224 55L265 36"
-                    stroke="#d8b8c6"
-                    stroke-width="5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    opacity="0.55"
-                  />
-                  <path
-                    d="M152 20l12 17 15 5 8 16-7 15-14 5-14-6-7-14 5-17z"
-                    fill="#c8d9e8"
-                    opacity="0.45"
-                  />
-                  <circle
-                    cx="151"
-                    cy="78"
-                    r="18"
-                    fill="#df7e96"
-                    opacity="0.78"
-                  />
-                  <path
-                    d="M151 69c-5.1 0-9.2 4.1-9.2 9.2 0 7.8 9.2 16.8 9.2 16.8s9.2-9 9.2-16.8c0-5.1-4.1-9.2-9.2-9.2Zm0 13.2a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z"
-                    fill="#fff"
-                  />
-                </svg>
-              </div>
-              <div role="cell">1 min 44 seg</div>
+            <div id="stats-tbody">
+              <!-- Preenchido dinamicamente pelo dashboard.js -->
             </div>
           </div>
         </section>

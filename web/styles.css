@@ -327,9 +327,16 @@ a {
   font-size: 15px;
   line-height: 1.45;
   color: var(--text);
-  margin-bottom: 12px;
-  min-height: 44px;
+  margin-bottom: 6px;
 }
+
+.etapa-desc {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
 .etapa-imagem img {
   width: 100%;
   height: 154px;

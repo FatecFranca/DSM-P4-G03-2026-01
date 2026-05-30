@@ -139,6 +139,7 @@ export const alertLocations = pgTable(
       .references(() => alerts.id),
     lat: doublePrecision("lat").notNull(),
     lng: doublePrecision("lng").notNull(),
+    label: text("label"),
     accuracy: real("accuracy"),
     speed: real("speed"),
     heading: real("heading"),
