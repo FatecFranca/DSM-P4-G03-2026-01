@@ -1,6 +1,21 @@
 // Usa a mesma origem da página — funciona local e em produção
 const API_URL = window.location.origin;
 
+/* ==========================================================================
+   Utilitários
+   ========================================================================== */
+
+/** Escapa HTML para prevenir XSS ao inserir dados da API no DOM */
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ==========================================================================
+   Cards de resumo (Dados Gerais)
+   ========================================================================== */
+
 const cards = [
   { id: "users", fallback: "--" },
   { id: "alerts", fallback: "--" },
@@ -19,9 +34,11 @@ async function loadDashboard() {
 
     for (const card of cards) {
       const el = document.getElementById(card.id);
-      if (el) {
-        el.innerText = data[card.id] ?? card.fallback;
-      }
+      if (!el) continue;
+
+      // Remove estado de erro se existia
+      el.closest(".stat-card")?.classList.remove("is-error");
+      el.innerText = data[card.id] ?? card.fallback;
     }
 
     console.log("Dashboard atualizado:", data);
@@ -31,14 +48,19 @@ async function loadDashboard() {
     // Sinaliza visualmente que a API está indisponível
     for (const card of cards) {
       const el = document.getElementById(card.id);
-      if (el && el.innerText === card.fallback) {
-        el.innerText = "—";
-      }
+      if (!el) continue;
+
+      el.closest(".stat-card")?.classList.add("is-error");
+      el.innerText = "Erro";
     }
   }
 }
 
 loadDashboard();
+
+/* ==========================================================================
+   Mini-mapa SVG (renderizado no cliente)
+   ========================================================================== */
 
 // Gera um mini mapa SVG estilizado com grid de ruas, área de cobertura e marcador
 function renderMap(r) {
@@ -88,7 +110,7 @@ function renderMap(r) {
   const routeCpy = routeStartY - pseudoRandom(seed + 1000) % 30;
 
   return `
-    <svg class="map-card" viewBox="0 0 310 108" aria-label="Mapa: ${r.localizacao}" role="img">
+    <svg class="map-card" viewBox="0 0 310 108" aria-label="Mapa: ${escapeHtml(r.localizacao)}" role="img">
       <defs>
         <linearGradient id="mapBg${seed}" x1="0" x2="1" y1="0" y2="1">
           <stop offset="0%" stop-color="#fefafb"/>
@@ -132,15 +154,18 @@ function renderMap(r) {
       </circle>
 
       <!-- Label no rodapé -->
-      <text x="155" y="102" text-anchor="middle" font-size="9" fill="#b08a94" font-family="Poppins, sans-serif" font-weight="600">${r.localizacao}</text>
+      <text x="155" y="102" text-anchor="middle" font-size="9" fill="#b08a94" font-family="Poppins, sans-serif" font-weight="600">${escapeHtml(r.localizacao)}</text>
     </svg>`;
 }
 
-// Tabela de estatísticas gerais (alimentada pela API)
-async function loadRecentAlerts() {
-  const tbody = document.getElementById("stats-tbody");
-  if (!tbody) return;
+/* ==========================================================================
+   Alertas recentes + Pipeline (unificado — única chamada à API)
+   ========================================================================== */
 
+// Cache compartilhado entre as funções de tabela e pipeline
+let latestAlerts = [];
+
+async function fetchRecentAlerts() {
   try {
     const response = await fetch(`${API_URL}/dashboard/recent-alerts`);
 
@@ -148,108 +173,111 @@ async function loadRecentAlerts() {
       throw new Error(`Erro HTTP: ${response.status}`);
     }
 
-    const rows = await response.json();
-
-    if (!rows.length) {
-      tbody.innerHTML =
-        '<div class="table-row" role="row"><div role="cell" style="grid-column:1/-1;text-align:center;padding:2rem">Nenhum alerta registrado</div></div>';
-      return;
-    }
-
-    tbody.innerHTML = rows
-      .map(
-        (r) => `
-      <div class="table-row" role="row">
-        <div role="cell">${r.data}</div>
-        <div role="cell">${r.hora}</div>
-        <div role="cell" class="location-cell">
-          <div class="location-line">
-            <span class="mini-pin" aria-hidden="true">
-              <svg viewBox="0 0 24 24" role="presentation">
-                <path d="M12 2C8.14 2 5 5.14 5 9c0 4.83 7 13 7 13s7-8.17 7-13c0-3.86-3.14-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/>
-              </svg>
-            </span>
-            <span>${r.localizacao}</span>
-          </div>
-          ${renderMap(r)}
-        </div>
-        <div role="cell">${r.tempoChegada}</div>
-      </div>`,
-      )
-      .join("");
-
-    console.log("Tabela de alertas atualizada:", rows.length, "registros");
+    latestAlerts = await response.json();
+    return latestAlerts;
   } catch (error) {
     console.error("Erro ao carregar alertas recentes:", error);
+    latestAlerts = [];
+    return [];
   }
 }
 
-loadRecentAlerts();
+// Tabela de estatísticas gerais
+function renderRecentAlertsTable(rows) {
+  const tbody = document.getElementById("stats-tbody");
+  if (!tbody) return;
+
+  if (!rows.length) {
+    tbody.innerHTML =
+      '<div class="table-row" role="row"><div role="cell" style="grid-column:1/-1;text-align:center;padding:2rem">Nenhum alerta registrado</div></div>';
+    return;
+  }
+
+  tbody.innerHTML = rows
+    .map(
+      (r) => `
+    <div class="table-row" role="row">
+      <div role="cell">${escapeHtml(r.data)}</div>
+      <div role="cell">${escapeHtml(r.hora)}</div>
+      <div role="cell" class="location-cell">
+        <div class="location-line">
+          <span class="mini-pin" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="presentation">
+              <path d="M12 2C8.14 2 5 5.14 5 9c0 4.83 7 13 7 13s7-8.17 7-13c0-3.86-3.14-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/>
+            </svg>
+          </span>
+          <span>${escapeHtml(r.localizacao)}</span>
+        </div>
+        ${renderMap(r)}
+      </div>
+      <div role="cell">${escapeHtml(r.tempoChegada)}</div>
+    </div>`,
+    )
+    .join("");
+
+  console.log("Tabela de alertas atualizada:", rows.length, "registros");
+}
 
 // Pipeline "Como Funciona" — preenche com dados do alerta mais recente
-async function loadPipeline() {
-  try {
-    const response = await fetch(`${API_URL}/dashboard/recent-alerts`);
-    if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+function renderPipeline(rows) {
+  if (!rows.length) return;
 
-    const rows = await response.json();
-    if (!rows.length) return;
+  const latest = rows[0];
 
-    const latest = rows[0];
-
-    // Destaca todos os steps como ativos (sistema completo rodando)
-    document.querySelectorAll(".pipeline-step").forEach((el) => {
+  // Ativa todos os steps e depois marca como completos
+  document.querySelectorAll(".pipeline-step").forEach((el) => {
+    el.classList.add("active");
+    // Pequeno delay para a transição visual
+    setTimeout(() => {
       el.classList.add("completed");
-    });
+    }, 300);
+  });
 
-    // Step 1 — Toque na Joia
-    setPipelineData("step1-data", [
-      `Usuária: <strong>${latest.usuario}</strong>`,
-      `Modo: <strong>${latest.modo === "discreet" ? "Discreto 🔇" : "Visível 📢"}</strong>`,
-    ]);
+  // Step 1 — Toque na Joia
+  setPipelineData("step1-data", [
+    `Usuária: <strong>${escapeHtml(latest.usuario)}</strong>`,
+    `Modo: <strong>${latest.modo === "discreet" ? "Discreto 🔇" : "Visível 📢"}</strong>`,
+  ]);
 
-    // Step 2 — Localização Enviada
-    setPipelineData("step2-data", [
-      `📍 <strong>${latest.localizacao}</strong>`,
-    ]);
+  // Step 2 — Localização Enviada
+  setPipelineData("step2-data", [
+    `📍 <strong>${escapeHtml(latest.localizacao)}</strong>`,
+  ]);
 
-    // Step 3 — Contatos Notificados
-    setPipelineData("step3-data", [
-      `Risco: <strong>${latest.risco === "high" ? "Alto ⚠️" : "Normal"}</strong>`,
-      `Push enviada aos contatos`,
-    ]);
+  // Step 3 — Contatos Notificados
+  setPipelineData("step3-data", [
+    `Risco: <strong>${latest.risco === "high" ? "Alto ⚠️" : "Normal"}</strong>`,
+    `Push enviada aos contatos`,
+  ]);
 
-    // Step 4 — Dashboard
-    setPipelineData("step4-data", [
-      `⏱️ Resposta em <strong>${latest.tempoChegada}</strong>`,
-    ]);
+  // Step 4 — Dashboard
+  setPipelineData("step4-data", [
+    `⏱️ Resposta em <strong>${escapeHtml(latest.tempoChegada)}</strong>`,
+  ]);
 
-    // Live alert banner
-    const liveBody = document.getElementById("live-alert-body");
-    if (liveBody) {
-      liveBody.innerHTML = `
-        <div class="live-stat">
-          <span class="live-stat-label">Usuária</span>
-          <span class="live-stat-value">${latest.usuario}</span>
-        </div>
-        <div class="live-stat">
-          <span class="live-stat-label">Localização</span>
-          <span class="live-stat-value">${latest.localizacao}</span>
-        </div>
-        <div class="live-stat">
-          <span class="live-stat-label">Tempo de Resposta</span>
-          <span class="live-stat-value mono">${latest.tempoChegada}</span>
-        </div>
-        <div class="live-stat">
-          <span class="live-stat-label">Status</span>
-          <span class="live-stat-value">🟢 Monitorando</span>
-        </div>`;
-    }
-
-    console.log("Pipeline atualizado com:", latest.usuario);
-  } catch (error) {
-    console.error("Erro ao carregar pipeline:", error);
+  // Live alert banner
+  const liveBody = document.getElementById("live-alert-body");
+  if (liveBody) {
+    liveBody.innerHTML = `
+      <div class="live-stat">
+        <span class="live-stat-label">Usuária</span>
+        <span class="live-stat-value">${escapeHtml(latest.usuario)}</span>
+      </div>
+      <div class="live-stat">
+        <span class="live-stat-label">Localização</span>
+        <span class="live-stat-value">${escapeHtml(latest.localizacao)}</span>
+      </div>
+      <div class="live-stat">
+        <span class="live-stat-label">Tempo de Resposta</span>
+        <span class="live-stat-value mono">${escapeHtml(latest.tempoChegada)}</span>
+      </div>
+      <div class="live-stat">
+        <span class="live-stat-label">Status</span>
+        <span class="live-stat-value">🟢 Monitorando</span>
+      </div>`;
   }
+
+  console.log("Pipeline atualizado com:", latest.usuario);
 }
 
 function setPipelineData(stepId, lines) {
@@ -259,9 +287,19 @@ function setPipelineData(stepId, lines) {
   container.innerHTML = lines.join("<br>");
 }
 
-loadPipeline();
+// Função unificada que carrega os dados uma vez e alimenta tabela + pipeline
+async function loadAlertsAndPipeline() {
+  const rows = await fetchRecentAlerts();
+  renderRecentAlertsTable(rows);
+  renderPipeline(rows);
+}
 
-// Frequência de acionamentos — dados agregados por local e data
+loadAlertsAndPipeline();
+
+/* ==========================================================================
+   Frequência de acionamentos
+   ========================================================================== */
+
 async function loadFrequency() {
   const tbody = document.getElementById("freq-tbody");
   if (!tbody) return;
@@ -295,25 +333,25 @@ async function loadFrequency() {
           const barWidth = Math.max(4, pct);
           const isTop = i === 0 ? " top-location" : "";
           return `
-      <div class="table-row freq-row${isTop}" role="row">
-        <div role="cell">${r.data}</div>
-        <div role="cell">${r.horaPico}</div>
-        <div role="cell" class="frequency-location-cell">
-          <div class="frequency-bar" style="--bar-width:${barWidth}%"></div>
-          <span class="frequency-label">
-            <span class="mini-pin" aria-hidden="true">
-              <svg viewBox="0 0 24 24" role="presentation">
-                <path d="M12 2C8.14 2 5 5.14 5 9c0 4.83 7 13 7 13s7-8.17 7-13c0-3.86-3.14-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/>
-              </svg>
-            </span>
-            ${r.localizacao}
+    <div class="table-row freq-row${isTop}" role="row">
+      <div role="cell">${escapeHtml(r.data)}</div>
+      <div role="cell">${escapeHtml(r.horaPico)}</div>
+      <div role="cell" class="frequency-location-cell">
+        <div class="frequency-bar" style="--bar-width:${barWidth}%"></div>
+        <span class="frequency-label">
+          <span class="mini-pin" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="presentation">
+              <path d="M12 2C8.14 2 5 5.14 5 9c0 4.83 7 13 7 13s7-8.17 7-13c0-3.86-3.14-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/>
+            </svg>
           </span>
-        </div>
-        <div role="cell">${r.dia}</div>
-        <div role="cell">
-          <span class="freq-badge">${r.total}x</span>
-        </div>
-      </div>`;
+          ${escapeHtml(r.localizacao)}
+        </span>
+      </div>
+      <div role="cell">${escapeHtml(r.dia)}</div>
+      <div role="cell">
+        <span class="freq-badge">${r.total}x</span>
+      </div>
+    </div>`;
         }
       )
       .join("");
@@ -389,7 +427,7 @@ function renderFreqChart(rows, max) {
       <text x="${x}" y="${chartH - 8}" text-anchor="middle" font-size="11" fill="#b08a94" font-family="Poppins, sans-serif">${v}</text>`;
   }).join("");
 
-  // Barras — usa animação CSS barSlideIn com delay inline (sem sobrescrever o nome)
+  // Barras — usa animação CSS barSlideIn com delay inline
   const bars = items.map((r, i) => {
     const y = padTop + i * (barH + gap) + (chartH - padBottom - totalH) / 2;
     const w = Math.max(12, (r.total / max) * areaW);
@@ -398,7 +436,7 @@ function renderFreqChart(rows, max) {
     return `
       <g class="freq-bar-group" style="animation-delay: ${i * 0.08}s">
         <!-- Label -->
-        <text x="${padLeft - 12}" y="${y + barH / 2 + 5}" text-anchor="end" font-size="12" fill="#5a3a3f" font-family="Poppins, sans-serif" font-weight="600">${label}</text>
+        <text x="${padLeft - 12}" y="${y + barH / 2 + 5}" text-anchor="end" font-size="12" fill="#5a3a3f" font-family="Poppins, sans-serif" font-weight="600">${escapeHtml(label)}</text>
         <!-- Barra -->
         <rect x="${padLeft}" y="${y}" width="${w}" height="${barH}" rx="8" fill="${colors[i]}" filter="url(#barShadow)">
           <animate attributeName="width" from="0" to="${w}" dur="0.6s" begin="${i * 0.08}s" fill="freeze"/>
@@ -413,7 +451,7 @@ function renderFreqChart(rows, max) {
     ${defs}
     ${gridLines}
     ${bars}
-    ${items.length > 0 ? `<text x="${chartW - 20}" y="22" text-anchor="end" font-size="10" fill="#b08a94" font-family="Poppins, sans-serif" font-weight="500">${items[items.length - 1].dia}</text>` : ""}
+    ${items.length > 0 ? `<text x="${chartW - 20}" y="22" text-anchor="end" font-size="10" fill="#b08a94" font-family="Poppins, sans-serif" font-weight="500">${escapeHtml(items[items.length - 1].dia)}</text>` : ""}
   </svg>`;
 
   wrapper.innerHTML = svgHTML;
@@ -421,8 +459,21 @@ function renderFreqChart(rows, max) {
 
 loadFrequency();
 
-// Atualiza a cada 30 segundos (evita polling agressivo)
+/* ==========================================================================
+   Polling — atualização periódica (escalonada para evitar rajadas)
+   ========================================================================== */
+
+// Dashboard stats a cada 30s
 setInterval(loadDashboard, 30_000);
-setInterval(loadRecentAlerts, 30_000);
-setInterval(loadPipeline, 30_000);
-setInterval(loadFrequency, 30_000);
+
+// Alertas + Pipeline a cada 30s (inicia com 7s de defasagem)
+setTimeout(() => {
+  setInterval(loadAlertsAndPipeline, 30_000);
+  // Primeira chamada imediata já foi feita no bootstrap acima,
+  // mas a cada 30s a partir de agora
+}, 7_000);
+
+// Frequência a cada 30s (inicia com 15s de defasagem)
+setTimeout(() => {
+  setInterval(loadFrequency, 30_000);
+}, 15_000);
