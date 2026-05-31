@@ -2,6 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ProtecHer</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" type="image/x-icon" href="img/favicon.ico" />
@@ -12,7 +13,18 @@
         <a class="logo" href="index.html" aria-label="Ir para a página inicial">
           <img src="img/ProtecHerLogotipo.png" alt="ProtecHer logo" />
         </a>
-        <nav class="main-nav" aria-label="Navegação principal">
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-label="Abrir menu de navegação"
+          aria-expanded="false"
+          aria-controls="main-nav"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <nav class="main-nav" id="main-nav" aria-label="Navegação principal">
           <ul class="nav-list">
             <li class="nav-item"><a href="#inicio">Inicio</a></li>
             <li class="nav-item"><a href="#como-funciona">Como Funciona</a></li>
@@ -25,24 +37,29 @@
     <main>
       <section id="inicio" class="hero">
         <div class="container hero-inner">
-          <div class="hero-content">
-            <h1 class="hero-titulo">Sua segurança em um gesto discreto.</h1>
-            <p class="hero-subtitulo">
-              Uma joia inteligente que aciona SOS com localização em tempo real
-            </p>
-            <div class="hero-ctas">
-              <a href="#" class="btn btn-primary">Baixar aplicativo</a>
-              <a href="#" class="btn btn-secondary">Pedir a joia</a>
-            </div>
-            <div class="hero-qr">
-              <img src="img/qrcode.png" alt="QR code" class="qr-image" />
-              <p class="qr-text">
-                Ou escaneie para baixar o app em seu celular
-              </p>
-            </div>
-          </div>
           <div class="hero-media">
             <img src="img/joiacelular.png" alt="Imagem da joia e do celular" />
+          </div>
+          <div class="hero-content">
+            <div class="hero-copy">
+              <h1 class="hero-titulo">Sua segurança em um gesto discreto.</h1>
+              <p class="hero-subtitulo">
+                Uma joia inteligente que aciona SOS com localização em tempo
+                real
+              </p>
+            </div>
+            <div class="hero-actions">
+              <div class="hero-ctas">
+                <a href="#" class="btn btn-primary">Baixar aplicativo</a>
+                <a href="#" class="btn btn-secondary">Pedir a joia</a>
+              </div>
+              <div class="hero-qr">
+                <img src="img/qrcode.png" alt="QR code" class="qr-image" />
+                <p class="qr-text">
+                  Ou escaneie para baixar o app em seu celular
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -122,10 +139,10 @@
             <p>
               A joia inteligente foi criada para permitir que, em uma situação
               de risco, a vítima consiga pedir ajuda de forma rápida e
-              silenciosa, apenas com um gesto. Ao pressionar a joia por três vezes, um sinal é
-              enviado para o celular, que compartilha automaticamente a
-              localização com contatos de confiança e inicia o envio de
-              informações em tempo real.
+              silenciosa, apenas com um gesto. Ao pressionar a joia por três
+              vezes, um sinal é enviado para o celular, que compartilha
+              automaticamente a localização com contatos de confiança e inicia o
+              envio de informações em tempo real.
             </p>
 
             <p>

@@ -9,10 +9,14 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    if (
-      window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
+    var reduceMotionQuery = window.matchMedia
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+    var narrowScreenQuery = window.matchMedia
+      ? window.matchMedia("(max-width: 1024px)")
+      : null;
+
+    if (reduceMotionQuery && reduceMotionQuery.matches) {
       return;
     }
 
@@ -56,6 +60,33 @@
     });
 
     var header = document.querySelector(".site-header");
+    var menuToggle = document.querySelector(".menu-toggle");
+    var mainNav = document.querySelector(".main-nav");
+    var navLinks = Array.prototype.slice.call(
+      document.querySelectorAll(".main-nav a"),
+    );
+
+    function closeMenu() {
+      if (!header || !menuToggle) return;
+      header.classList.remove("menu-open");
+      menuToggle.setAttribute("aria-expanded", "false");
+      menuToggle.setAttribute("aria-label", "Abrir menu de navegação");
+    }
+
+    if (menuToggle && mainNav) {
+      menuToggle.addEventListener("click", function () {
+        var isOpen = header.classList.toggle("menu-open");
+        menuToggle.setAttribute("aria-expanded", String(isOpen));
+        menuToggle.setAttribute(
+          "aria-label",
+          isOpen ? "Fechar menu de navegação" : "Abrir menu de navegação",
+        );
+      });
+      navLinks.forEach(function (link) {
+        link.addEventListener("click", closeMenu);
+      });
+    }
+
     function onScrollHeader() {
       if (!header) return;
       if (window.scrollY > 40) header.classList.add("scrolled");
@@ -67,9 +98,6 @@
     var sections = Array.prototype.slice.call(
       document.querySelectorAll("main section[id]"),
     );
-    var navLinks = Array.prototype.slice.call(
-      document.querySelectorAll(".main-nav a"),
-    );
     function updateActiveNav() {
       if (!sections.length) return;
       var current = sections[0];
@@ -78,7 +106,8 @@
         if (sections[i].offsetTop <= scrollAnchor) current = sections[i];
       }
       var atPageBottom =
-        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8;
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 8;
       if (atPageBottom) current = sections[sections.length - 1];
       navLinks.forEach(function (a) {
         a.classList.remove("active");
@@ -94,6 +123,10 @@
     var heroMedia = document.querySelector(".hero-media");
     function onParallax() {
       if (!heroMedia) return;
+      if (narrowScreenQuery && narrowScreenQuery.matches) {
+        heroMedia.style.transform = "";
+        return;
+      }
       var rect = heroMedia.getBoundingClientRect();
       var pct =
         (window.innerHeight - rect.top) / (window.innerHeight + rect.height);
