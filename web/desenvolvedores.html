@@ -13,7 +13,18 @@
         <a class="logo" href="index.html" aria-label="Ir para a página inicial">
           <img src="img/ProtecHerLogotipo.png" alt="ProtecHer logo" />
         </a>
-        <nav class="main-nav" aria-label="Navegação principal">
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-label="Abrir menu de navegação"
+          aria-expanded="false"
+          aria-controls="main-nav"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <nav class="main-nav" id="main-nav" aria-label="Navegação principal">
           <ul class="nav-list">
             <li class="nav-item"><a href="index.html">Início</a></li>
             <li class="nav-item">
