@@ -22,6 +22,11 @@
       ".hero-ctas",
       ".hero-qr",
       ".hero-media img",
+      ".hero-time-inner",
+      ".team-card",
+      ".team-item",
+      ".contact-cta",
+      ".contact-note",
       ".funciona-etapa",
       ".sobre-texto",
       ".sobre-imagem",
@@ -68,10 +73,13 @@
     function updateActiveNav() {
       if (!sections.length) return;
       var current = sections[0];
+      var scrollAnchor = window.scrollY + 140;
       for (var i = 0; i < sections.length; i++) {
-        var r = sections[i].getBoundingClientRect();
-        if (r.top <= 120) current = sections[i];
+        if (sections[i].offsetTop <= scrollAnchor) current = sections[i];
       }
+      var atPageBottom =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 8;
+      if (atPageBottom) current = sections[sections.length - 1];
       navLinks.forEach(function (a) {
         a.classList.remove("active");
       });

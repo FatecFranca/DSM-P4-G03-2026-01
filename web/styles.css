@@ -277,6 +277,9 @@ a {
   object-fit: cover;
   box-shadow: none;
 }
+.hero-media:hover img {
+  transform: translateY(-6px) scale(1.01);
+}
 
 /* Como Funciona */
 .como-funciona {
@@ -337,6 +340,13 @@ a {
   border-radius: 16px;
   box-shadow: var(--soft-shadow);
   margin: 0 auto;
+  transition:
+    transform 280ms ease,
+    box-shadow 280ms ease;
+}
+.funciona-etapa:hover .etapa-imagem img {
+  transform: scale(1.03);
+  box-shadow: 0 14px 28px rgba(181, 130, 138, 0.14);
 }
 
 /* Sobre */
@@ -404,6 +414,17 @@ a {
   font-weight: 600;
   text-decoration: none;
   text-underline-offset: 2px;
+  display: inline-flex;
+  align-items: center;
+  transition:
+    color 220ms ease,
+    transform 220ms ease;
+}
+
+.footer-link:hover,
+.footer-link:focus {
+  color: var(--pink-400);
+  transform: translateX(4px);
 }
 
 /* Pequenos ajustes e utilitários */
