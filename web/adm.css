@@ -699,3 +699,160 @@ html {
     gap: 8px;
   }
 }
+
+/* ── Dashboard dynamic elements ── */
+
+.dashboard-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+  border-radius: 20px;
+  background: rgba(255, 248, 250, 0.92);
+  box-shadow: var(--soft-shadow);
+  transition: opacity 300ms ease;
+}
+
+.dashboard-status.hidden {
+  display: none;
+}
+
+.status-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.status-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(227, 143, 166, 0.28);
+  border-top-color: #e38fa6;
+  border-radius: 50%;
+  animation: spin 720ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dashboard-status.error .status-content {
+  color: #b8455a;
+}
+
+.dashboard-status.error .status-spinner {
+  display: none;
+}
+
+.chart-canvas-wrap {
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.chart-canvas-wrap canvas {
+  width: 100% !important;
+  max-height: 260px;
+}
+
+.empty-state {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+/* Table row dynamic */
+#table-body .table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2.5fr 1.25fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 14px 18px;
+  border-top: 1px solid rgba(180, 147, 160, 0.18);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+#table-body .table-row .location-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#table-body .table-row .location-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#table-body .table-row .mini-pin {
+  width: 22px;
+  height: 22px;
+  color: #f39caf;
+  flex: 0 0 auto;
+}
+
+#table-body .table-row .mini-pin svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.status-tag.active {
+  background: #fbe0e6;
+  color: #a8435a;
+}
+
+.status-tag.closed {
+  background: #e8e8e8;
+  color: #6e6e6e;
+}
+
+/* ── Mini map (clipped to hide OSM attribution bar) ── */
+.mini-map-wrap {
+  width: 100%;
+  max-width: 280px;
+  height: 120px;
+  overflow: hidden;
+  border: 2px solid #eacdd6;
+  border-radius: 12px;
+  margin-top: 4px;
+  margin-left: 32px;
+  background: #fef5f7;
+  position: relative;
+}
+
+.mini-map {
+  width: 280px;
+  height: 162px;          /* 120px visible + 42px overflow to hide attribution */
+  border: none;
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Let table rows grow to fit mini maps */
+#table-body .table-row {
+  min-height: auto;
+  padding: 16px 18px;
+  align-items: start;
+}
