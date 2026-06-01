@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1774394348109,
+      "tag": "0000_opposite_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774395543999,
+      "tag": "0001_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774396436203,
+      "tag": "0002_alert_locations",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774397323581,
+      "tag": "0003_sprint31_push",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779020645863,
+      "tag": "0005_ble_devices",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779020733440,
+      "tag": "0006_ble_devices_updated",
+      "breakpoints": true
+    }
+  ]
+}
