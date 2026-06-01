@@ -10,6 +10,8 @@
       "**/node_modules/**",
       "**/dist/**",
       "**/.expo/**",
+      "**/android/build/**",
+      "**/android/.gradle/**",
       "pnpm-lock.yaml",
       "**/drizzle/**"
     ]

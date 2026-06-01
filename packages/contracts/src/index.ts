@@ -50,6 +50,16 @@ export {
   type UnregisterBleDeviceResponse,
 } from "./devices.js";
 export {
+  DashboardDailyActivationSchema,
+  DashboardFrequentLocationSchema,
+  DashboardRecentAlertSchema,
+  DashboardResponseSchema,
+  type DashboardDailyActivation,
+  type DashboardFrequentLocation,
+  type DashboardRecentAlert,
+  type DashboardResponse,
+} from "./admin.js";
+export {
   AckAlertParamsSchema,
   AckAlertResponseSchema,
   ActiveAlertResponseSchema,
