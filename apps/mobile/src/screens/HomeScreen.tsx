@@ -1,20 +1,36 @@
 import { ActiveAlertResponseSchema } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { GlassCard } from "../components/GlassCard";
 import { useEspButtonBle } from "../hooks/useEspButtonBle";
 import type { AppStackParamList } from "../navigation/types";
-import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
+import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Home">;
 
 export function HomeScreen({ navigation }: Props) {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { state, signOut, getAccessToken } = useAuth();
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null);
+  const isSmallScreen = height < 700 || width < 360;
+  const isVeryNarrow = width < 350;
+  const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
+  const outerSize = isSmallScreen ? 178 : 198;
+  const innerSize = isSmallScreen ? 148 : 168;
 
   // Pulsing animation for the SOS button
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -84,107 +100,152 @@ export function HomeScreen({ navigation }: Props) {
     },
   });
 
+  const bleStatusText =
+    bleError ?? (bleConnected ? "Dispositivo conectado" : bleStatus);
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Olá, {firstName} 👋</Text>
-          <Text style={styles.email}>{user.email}</Text>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.2)", "rgba(199,22,87,0.2)"]}
+        style={styles.backgroundGradient}
+        pointerEvents="none"
+      />
+
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: Math.max(12, insets.top + 6),
+            paddingBottom: Math.max(Spacing.xl, insets.bottom + 14),
+            width: "100%",
+            maxWidth: contentMaxWidth,
+            alignSelf: "center",
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.headerTop}>
+          <Text style={styles.brand}>Protect Her</Text>
+          <Pressable onPress={() => void signOut()} style={styles.logoutBtn}>
+            <Text style={styles.logoutText}>Sair</Text>
+          </Pressable>
         </View>
-        <Pressable onPress={() => void signOut()} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Sair</Text>
-        </Pressable>
-      </View>
 
-      {/* Active Alert Banner */}
-      {activeAlertId ? (
-        <Pressable
-          onPress={() =>
-            navigation.navigate("ActiveAlert", { alertId: activeAlertId })
-          }
-        >
-          <GlassCard variant="danger" style={styles.alertBanner}>
-            <View style={styles.alertDot} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.alertBannerTitle}>Alerta ativo</Text>
-              <Text style={styles.alertBannerSub}>
-                Toque para ver detalhes →
-              </Text>
-            </View>
-          </GlassCard>
-        </Pressable>
-      ) : null}
-
-      {/* SOS Button — center of screen */}
-      <View style={styles.sosSection}>
-        <Text style={styles.sosLabel}>Emergência? Pressione o botão</Text>
-        <Animated.View
-          style={[styles.sosOuter, { transform: [{ scale: pulseAnim }] }]}
-        >
-          <View style={styles.sosGlowRing}>
-            <Pressable
-              onPress={() => navigation.navigate("Sos")}
-              style={({ pressed }) => [
-                styles.sosButton,
-                pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
-              ]}
-            >
-              <Text style={styles.sosText}>SOS</Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-        <Text style={styles.sosHint}>
-          Seus contatos serão notificados instantaneamente
-        </Text>
-        <View style={styles.bleStatusCard}>
-          <Text style={styles.bleStatusLabel}>Status BLE do ESP32</Text>
-          <Text
-            style={[
-              styles.bleStatusText,
-              bleError ? styles.bleStatusError : null,
+        <View style={styles.userBlock}>
+          <Text style={styles.greeting}>Olá, {firstName}</Text>
+          <Text style={styles.email}>{user.email}</Text>
+          <Pressable
+            onPress={() => navigation.navigate("Sos")}
+            style={({ pressed }) => [
+              styles.startAlertBtn,
+              pressed && styles.buttonPressed,
             ]}
           >
-            {bleError ??
-              (bleConnected ? "Conectado e aguardando clique" : bleStatus)}
-          </Text>
-          {bleConnected ? (
-            <Text style={styles.bleStatusHint}>
-              O dispositivo está pronto. Pressione o botão físico para testar.
-            </Text>
-          ) : null}
+            <Text style={styles.startAlertBtnText}>Iniciar alerta</Text>
+          </Pressable>
         </View>
-      </View>
 
-      {/* Bottom Quick Actions */}
-      <View style={styles.quickActions}>
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => navigation.navigate("Contacts")}
-        >
-          <Text style={styles.actionIcon}>👥</Text>
-          <Text style={styles.actionLabel}>Contatos</Text>
-          <Text style={styles.actionSub}>Emergência</Text>
-        </Pressable>
+        {activeAlertId ? (
+          <Pressable
+            onPress={() =>
+              navigation.navigate("ActiveAlert", { alertId: activeAlertId })
+            }
+            style={styles.activeAlertBanner}
+          >
+            <Text style={styles.activeAlertText}>Alerta ativo em andamento</Text>
+          </Pressable>
+        ) : null}
 
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => navigation.navigate("ContactAlertsFeed")}
-        >
-          <Text style={styles.actionIcon}>🔔</Text>
-          <Text style={styles.actionLabel}>Alertas</Text>
-          <Text style={styles.actionSub}>Das titulares</Text>
-        </Pressable>
+        <View style={styles.sosSection}>
+          <Text style={styles.sosLabel}>
+            Emergência? Aperte o colar 3 vezes{"\n"}ou percione o botão
+          </Text>
 
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => navigation.navigate("DeviceManagement")}
+          <Animated.View
+            style={[
+              styles.sosOuter,
+              {
+                width: outerSize,
+                height: outerSize,
+                borderRadius: outerSize / 2,
+                transform: [{ scale: pulseAnim }],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={["#FFC3D5", "#C71657"]}
+              style={styles.sosGradientRing}
+            >
+              <Pressable
+                onPress={() => navigation.navigate("Sos")}
+                style={({ pressed }) => [
+                  styles.sosButton,
+                  {
+                    width: innerSize,
+                    height: innerSize,
+                    borderRadius: innerSize / 2,
+                  },
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <Text style={styles.sosText}>S O S</Text>
+              </Pressable>
+            </LinearGradient>
+          </Animated.View>
+
+          <Text style={styles.sosHint}>
+            Seus contatos serão notificados{"\n"}instantaneamente
+          </Text>
+
+          <View style={styles.bleStatusCard}>
+            <Text
+              style={[
+                styles.bleStatusText,
+                bleError ? styles.bleStatusError : undefined,
+              ]}
+            >
+              {bleStatusText}
+            </Text>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.quickActions,
+            isVeryNarrow ? styles.quickActionsNarrow : undefined,
+          ]}
         >
-          <Text style={styles.actionIcon}>📡</Text>
-          <Text style={styles.actionLabel}>Dispositivos</Text>
-          <Text style={styles.actionSub}>ESP32 BLE</Text>
-        </Pressable>
-      </View>
+          <Pressable
+            style={[
+              styles.actionCard,
+              isVeryNarrow ? styles.actionCardNarrow : undefined,
+            ]}
+            onPress={() => navigation.navigate("Contacts")}
+          >
+            <Text style={styles.actionLabel}>Contatos</Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.actionCard,
+              isVeryNarrow ? styles.actionCardNarrow : undefined,
+            ]}
+            onPress={() => navigation.navigate("ContactAlertsFeed")}
+          >
+            <Text style={styles.actionLabel}>Alertas</Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.actionCard,
+              isVeryNarrow ? styles.actionCardNarrow : undefined,
+            ]}
+            onPress={() => navigation.navigate("DeviceManagement")}
+          >
+            <Text style={styles.actionLabel}>Dispositivos{"\n"}conectados</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -192,154 +253,190 @@ export function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.bgPrimary,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 60,
-    paddingBottom: Spacing.xl,
+    backgroundColor: "#FDF2F6",
   },
-  header: {
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: Spacing.lg,
+  },
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+  brand: {
+    fontFamily: "Italianno_400Regular",
+    fontSize: 36,
+    color: "#DA8295",
+    lineHeight: 40,
+  },
+  userBlock: {
+    marginTop: 2,
+    marginBottom: 8,
+    gap: 0,
+  },
   greeting: {
-    ...Typography.h2,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 24,
+    lineHeight: 26,
+    color: "#55383E",
+    includeFontPadding: false,
   },
   email: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-    marginTop: 2,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    lineHeight: 16,
+    color: "#55383E",
+    marginTop: -4,
+    includeFontPadding: false,
+  },
+  startAlertBtn: {
+    alignSelf: "flex-start",
+    minHeight: 22,
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: "#DA8295",
+    backgroundColor: "#FFFFFF",
+  },
+  startAlertBtnText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    color: "#DA8295",
+    lineHeight: 14,
   },
   logoutBtn: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.bgGlass,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    minWidth: 36,
+    minHeight: 24,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "#C2828F",
+    alignItems: "center",
+    justifyContent: "center",
+    ...Shadow.sm,
   },
   logoutText: {
-    ...Typography.captionBold,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    color: "#FFFFFF",
   },
-  alertBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-    marginTop: Spacing.lg,
+  activeAlertBanner: {
+    marginTop: 6,
+    marginBottom: 10,
+    borderRadius: Radius.md,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(199,22,87,0.14)",
+    borderWidth: 1,
+    borderColor: "#C71657",
   },
-  alertDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.danger,
-  },
-  alertBannerTitle: {
-    ...Typography.bodyBold,
-    color: Colors.danger,
-  },
-  alertBannerSub: {
-    ...Typography.small,
-    color: Colors.textSecondary,
+  activeAlertText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 13,
+    color: "#7D1F44",
+    textAlign: "center",
   },
   sosSection: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.lg,
+    gap: 14,
+    paddingTop: 10,
   },
   sosLabel: {
-    ...Typography.body,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 17,
+    color: "#55383E",
     textAlign: "center",
+    lineHeight: 25,
+    marginBottom: 2,
   },
   sosOuter: {
     alignItems: "center",
     justifyContent: "center",
   },
-  sosGlowRing: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: "rgba(255,71,87,0.08)",
-    borderWidth: 2,
-    borderColor: "rgba(255,71,87,0.2)",
+  sosGradientRing: {
+    flex: 1,
+    width: "100%",
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    ...Shadow.glow(Colors.danger, 0.35),
+    padding: 18,
   },
   sosButton: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: Colors.danger,
+    backgroundColor: "#C72A67",
     alignItems: "center",
     justifyContent: "center",
-    ...Shadow.glow(Colors.danger, 0.5),
+    ...Shadow.glow("#C71657", 0.35),
   },
   sosText: {
-    ...Typography.hero,
-    color: Colors.white,
-    fontSize: 42,
-    letterSpacing: 4,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 46,
+    color: "#FFFFFF",
+    letterSpacing: 3,
   },
   sosHint: {
-    ...Typography.small,
-    color: Colors.textMuted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 18,
+    color: "#55383E",
     textAlign: "center",
-    maxWidth: 240,
+    lineHeight: 24,
   },
   bleStatusCard: {
     width: "100%",
-    marginTop: Spacing.lg,
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  bleStatusLabel: {
-    ...Typography.captionBold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
+    borderColor: "#D9A2AE",
+    backgroundColor: "rgba(255,221,225,0.6)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 6,
   },
   bleStatusText: {
-    ...Typography.small,
-    color: Colors.textSecondary,
-  },
-  bleStatusHint: {
-    ...Typography.small,
-    color: Colors.textMuted,
-    marginTop: Spacing.xs,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 16,
+    color: "#55383E",
   },
   bleStatusError: {
-    color: Colors.danger,
+    color: "#B12E58",
   },
   quickActions: {
     flexDirection: "row",
-    gap: Spacing.md,
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 6,
+  },
+  quickActionsNarrow: {
+    flexWrap: "wrap",
   },
   actionCard: {
     flex: 1,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
+    minHeight: 66,
+    backgroundColor: "#C88B95",
+    borderRadius: Radius.md,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
     alignItems: "center",
-    gap: Spacing.xs,
+    justifyContent: "center",
+    ...Shadow.md,
   },
-  actionIcon: {
-    fontSize: 28,
-    marginBottom: Spacing.xs,
+  actionCardNarrow: {
+    minWidth: "48%",
   },
   actionLabel: {
-    ...Typography.captionBold,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    lineHeight: 17,
+    color: "#FFFFFF",
+    textAlign: "center",
   },
-  actionSub: {
-    ...Typography.small,
-    color: Colors.textMuted,
+  buttonPressed: {
+    opacity: 0.85,
   },
 });

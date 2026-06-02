@@ -5,30 +5,35 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { AppButton } from "../components/AppButton";
-import { AppInput } from "../components/AppInput";
-import { Badge } from "../components/Badge";
-import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import { logMobileTelemetry } from "../lib/telemetry";
 import type { AppStackParamList } from "../navigation/types";
-import { Colors, Radius, Spacing, Typography } from "../theme";
+import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ActiveAlert">;
 
 export function ActiveAlertScreen({ navigation, route }: Props) {
   const { alertId } = route.params;
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isSmallScreen = height < 700 || width < 360;
+  const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const { getAccessToken } = useAuth();
   const [alertData, setAlertData] = useState<{
     status: string;
@@ -42,27 +47,42 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [bgHint, setBgHint] = useState<string | null>(null);
 
-  // Pulsing red ring animation
-  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+  // Pulsing indicator animation (smooth)
+  const pulseOpacity = useRef(new Animated.Value(0.35)).current;
+  const pulseScale = useRef(new Animated.Value(0.92)).current;
 
   useEffect(() => {
     const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulseOpacity, {
+            toValue: 0.9,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseOpacity, {
+            toValue: 0.35,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.timing(pulseScale, {
+            toValue: 1.06,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseScale, {
+            toValue: 0.92,
+            duration: 1400,
+            useNativeDriver: true,
+          }),
+        ]),
       ]),
     );
     pulse.start();
     return () => pulse.stop();
-  }, [pulseAnim]);
+  }, [pulseOpacity, pulseScale]);
 
   const loadActive = useCallback(async () => {
     setError(null);
@@ -154,137 +174,218 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
     : 0;
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Pulsing indicator */}
-      <View style={styles.pulseSection}>
-        <Animated.View style={[styles.pulseOuter, { opacity: pulseAnim }]} />
-        <View style={styles.pulseDot} />
-        <Text style={styles.pulseLabel}>ALERTA ATIVO</Text>
-      </View>
+    <View style={styles.flex}>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.2)", "rgba(199,22,87,0.2)"]}
+        style={styles.backgroundGradient}
+        pointerEvents="none"
+      />
 
-      {/* Alert Info */}
-      {refreshing && !alertData ? (
-        <ActivityIndicator color={Colors.danger} />
-      ) : alertData ? (
-        <GlassCard variant="danger" style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Modo</Text>
-            <Badge
-              label={alertData.mode === "visible" ? "Visível" : "Discreto"}
-              variant={alertData.mode === "visible" ? "danger" : "neutral"}
-            />
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Risco</Text>
-            <Badge
-              label={alertData.riskLevel === "high" ? "Alto" : "Normal"}
-              variant={alertData.riskLevel === "high" ? "danger" : "safe"}
-            />
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Tempo</Text>
-            <Text style={styles.infoValue}>{elapsed} min</Text>
-          </View>
-        </GlassCard>
-      ) : (
-        <Text style={styles.noAlert}>Alerta encerrado ou indisponível.</Text>
-      )}
-
-      {/* Location Tracking */}
-      <GlassCard>
-        <Text style={styles.trackTitle}>📍 Rastreamento de localização</Text>
-        <Text style={styles.trackDesc}>
-          Sua localização está sendo enviada automaticamente para seus contatos
-          de emergência em tempo real.
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(12, insets.top + 6),
+            paddingBottom: Math.max(Spacing.xxxl, insets.bottom + 16),
+            width: "100%",
+            maxWidth: contentMaxWidth,
+            alignSelf: "center",
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.brand}>Protect Her</Text>
+        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+          Alerta ativo
         </Text>
-        <AppButton
-          title="Permitir segundo plano"
-          variant="outline"
-          onPress={() => void requestBackgroundLocation()}
-          small
-          style={{ marginTop: Spacing.md }}
-        />
-        {bgHint ? (
-          <Text
-            style={[
-              styles.hint,
-              bgHint.startsWith("✅")
-                ? { color: Colors.safe }
-                : { color: Colors.warning },
+
+        <View style={styles.pulseSection}>
+          <View style={styles.pulseIndicator}>
+            <Animated.View
+              style={[
+                styles.pulseOuter,
+                { opacity: pulseOpacity, transform: [{ scale: pulseScale }] },
+              ]}
+            />
+            <View style={styles.pulseDot} />
+          </View>
+          <Text style={styles.pulseLabel}>ALERTA EM ANDAMENTO</Text>
+        </View>
+
+        {refreshing && !alertData ? (
+          <View style={styles.infoCard}>
+            <ActivityIndicator color="#C71657" />
+          </View>
+        ) : alertData ? (
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Modo</Text>
+              <Text style={styles.infoValue}>
+                {alertData.mode === "visible" ? "Visivel" : "Discreto"}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Risco</Text>
+              <Text style={styles.infoValue}>
+                {alertData.riskLevel === "high" ? "Alto" : "Normal"}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Tempo</Text>
+              <Text style={styles.infoValue}>{elapsed} min</Text>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.noAlert}>Alerta encerrado ou indisponivel.</Text>
+        )}
+
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Rastreamento de localizacao</Text>
+          <Text style={styles.sectionDesc}>
+            Sua localizacao esta sendo enviada automaticamente para seus
+            contatos de emergencia em tempo real.
+          </Text>
+          <Pressable
+            onPress={() => void requestBackgroundLocation()}
+            style={({ pressed }) => [
+              styles.outlineButton,
+              pressed && styles.buttonPressed,
             ]}
           >
-            {bgHint}
+            <Text style={styles.outlineButtonText}>Permitir segundo plano</Text>
+          </Pressable>
+          {bgHint ? (
+            <Text
+              style={[
+                styles.hint,
+                bgHint.startsWith("✅")
+                  ? { color: "#368A4A" }
+                  : { color: "#B12E58" },
+              ]}
+            >
+              {bgHint}
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={styles.sectionCard}>
+          <Text style={styles.cancelTitle}>Estou segura</Text>
+          <Text style={styles.cancelDesc}>
+            PIN opcional. Se preenchido, o sistema entende que voce esta sob
+            coacao. O alerta encerra para voce, mas o risco e elevado no
+            sistema.
           </Text>
-        ) : null}
-      </GlassCard>
+          <TextInput
+            placeholder="PIN de coacao (opcional)"
+            placeholderTextColor="#8B7378"
+            cursorColor="#DA8295"
+            secureTextEntry
+            value={pin}
+            onChangeText={setPin}
+            style={styles.input}
+          />
+          <Pressable
+            onPress={() => void cancel()}
+            disabled={loading}
+            style={({ pressed }) => [
+              styles.cancelButton,
+              (pressed || loading) && styles.buttonPressed,
+            ]}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.cancelButtonText}>Cancelar alerta</Text>
+            )}
+          </Pressable>
+        </View>
 
-      {/* Cancel Section */}
-      <GlassCard style={styles.cancelSection}>
-        <Text style={styles.cancelTitle}>Estou segura</Text>
-        <Text style={styles.cancelDesc}>
-          PIN opcional — se preenchido, o sistema entende que você está sob
-          coação. O alerta encerra para você, mas o risco é elevado no sistema.
-        </Text>
-        <AppInput
-          placeholder="PIN de coação (opcional)"
-          value={pin}
-          onChangeText={setPin}
-          secureTextEntry
-        />
-        <AppButton
-          title="Cancelar alerta"
-          variant="safe"
-          onPress={() => void cancel()}
-          loading={loading}
-          style={{ marginTop: Spacing.sm }}
-        />
-      </GlassCard>
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </ScrollView>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+    backgroundColor: "#FDF2F6",
+  },
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
   scroll: {
     flex: 1,
-    backgroundColor: Colors.bgPrimary,
   },
   container: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 60,
-    paddingBottom: Spacing.xxxl,
-    gap: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    gap: 14,
+    flexGrow: 1,
+  },
+  brand: {
+    fontFamily: "Italianno_400Regular",
+    fontSize: 36,
+    color: "#DA8295",
+    lineHeight: 40,
+  },
+  pageTitle: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 24,
+    lineHeight: 30,
+    color: "#55383E",
+    marginTop: -4,
+    textAlign: "center",
+    alignSelf: "center",
+    width: "100%",
+  },
+  pageTitleSmall: {
+    fontSize: 21,
+    lineHeight: 27,
   },
   pulseSection: {
     alignItems: "center",
-    gap: Spacing.sm,
+    justifyContent: "center",
+    gap: 5,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E2A2AE",
+    backgroundColor: "rgba(255,208,225,0.38)",
+    minHeight: 82,
+  },
+  pulseIndicator: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
   },
   pulseOuter: {
     position: "absolute",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(255,71,87,0.15)",
-    top: -10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(199,22,87,0.2)",
   },
   pulseDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: Colors.danger,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#C71657",
   },
   pulseLabel: {
-    ...Typography.captionBold,
-    color: Colors.danger,
-    letterSpacing: 2,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 13,
+    color: "#A0224D",
+    letterSpacing: 1,
   },
   infoCard: {
-    gap: Spacing.md,
+    gap: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E2A2AE",
+    backgroundColor: "rgba(255,208,225,0.45)",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   infoRow: {
     flexDirection: "row",
@@ -292,48 +393,107 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   infoLabel: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#6A5157",
   },
   infoValue: {
-    ...Typography.captionBold,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 14,
+    color: "#55383E",
   },
   noAlert: {
-    ...Typography.body,
-    color: Colors.textMuted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#6A5157",
     textAlign: "center",
   },
-  trackTitle: {
-    ...Typography.bodyBold,
-    color: Colors.textPrimary,
+  sectionCard: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E2A2AE",
+    backgroundColor: "rgba(255,208,225,0.45)",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
   },
-  trackDesc: {
-    ...Typography.small,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
+  sectionTitle: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 16,
+    color: "#55383E",
+  },
+  sectionDesc: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
     lineHeight: 18,
+    color: "#6A5157",
+  },
+  outlineButton: {
+    minHeight: 40,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: "#DA8295",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 2,
+  },
+  outlineButtonText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 14,
+    color: "#DA8295",
   },
   hint: {
-    ...Typography.small,
-    marginTop: Spacing.sm,
-    fontWeight: "600",
-  },
-  cancelSection: {
-    gap: Spacing.sm,
+    fontFamily: "Poppins_500Medium",
+    marginTop: 2,
+    fontSize: 12,
   },
   cancelTitle: {
-    ...Typography.bodyBold,
-    color: Colors.safe,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 16,
+    color: "#55383E",
   },
   cancelDesc: {
-    ...Typography.small,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    color: "#6A5157",
     lineHeight: 18,
   },
+  input: {
+    minHeight: 44,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "#FFD0E1",
+    color: "#55383E",
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+  },
+  cancelButton: {
+    minHeight: 44,
+    borderRadius: Radius.md,
+    backgroundColor: "#C17986",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginTop: 2,
+    ...Shadow.sm,
+  },
+  cancelButtonText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 15,
+    color: "#FFFFFF",
+  },
   error: {
-    ...Typography.caption,
-    color: Colors.textDanger,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#B12E58",
     textAlign: "center",
+  },
+  buttonPressed: {
+    opacity: 0.85,
   },
 });
