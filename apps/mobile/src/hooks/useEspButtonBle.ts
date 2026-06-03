@@ -4,8 +4,9 @@ import {
   CHARACTERISTIC_UUID,
   DEVICE_NAME,
   SERVICE_UUID,
-  bleManager,
   decodeBleValue,
+  getBleManager,
+  isBleNativeAvailable,
   requestBlePermissions,
 } from "../services/ble/espBle";
 import { useEspDeviceStorage } from "./useEspDeviceStorage";
@@ -49,6 +50,11 @@ export function useEspButtonBle(
   const isScanningRef = useRef(false);
 
   const cleanup = useCallback(async () => {
+    const bleManager = getBleManager();
+    if (!bleManager) {
+      return;
+    }
+
     console.log("Desconectando BLE e limpando recursos...");
     isScanningRef.current = false;
     if (reconnectTimeoutRef.current) {
@@ -205,7 +211,8 @@ export function useEspButtonBle(
 
   const connectToDevice = useCallback(
     async (device: Device) => {
-      if (!mountedRef.current) return;
+      const bleManager = getBleManager();
+      if (!bleManager || !mountedRef.current) return;
 
       try {
         console.log("Tentando conectar ao dispositivo:", device.id);
@@ -285,6 +292,16 @@ export function useEspButtonBle(
   );
 
   useEffect(() => {
+    if (!isBleNativeAvailable()) {
+      setStatus("BLE indisponível no Expo Go");
+      return;
+    }
+
+    const bleManager = getBleManager();
+    if (!bleManager) {
+      return;
+    }
+
     let cancelled = false;
 
     const tryReconnectOrScan = async () => {

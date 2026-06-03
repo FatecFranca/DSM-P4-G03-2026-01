@@ -1,11 +1,28 @@
+import Constants from "expo-constants";
 import { type Permission, PermissionsAndroid, Platform } from "react-native";
-import { BleManager } from "react-native-ble-plx";
+import type { BleManager } from "react-native-ble-plx";
 
 export const DEVICE_NAME = "ESP-Oficial-BLE";
 export const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 export const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
-export const bleManager = new BleManager();
+let bleManagerInstance: BleManager | null = null;
+
+export function isBleNativeAvailable(): boolean {
+  return Constants.appOwnership !== "expo";
+}
+
+export function getBleManager(): BleManager | null {
+  if (!isBleNativeAvailable()) {
+    return null;
+  }
+  if (!bleManagerInstance) {
+    const { BleManager } =
+      require("react-native-ble-plx") as typeof import("react-native-ble-plx");
+    bleManagerInstance = new BleManager();
+  }
+  return bleManagerInstance;
+}
 
 export async function requestBlePermissions(): Promise<boolean> {
   if (Platform.OS !== "android") {

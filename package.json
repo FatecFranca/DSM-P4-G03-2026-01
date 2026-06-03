@@ -3,12 +3,12 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build:packages": "pnpm --filter @protecther/contracts build && pnpm --filter @protecther/shared build",
+    "build:packages": "corepack pnpm --filter @protecther/contracts build && corepack pnpm --filter @protecther/shared build",
     "dev": "concurrently -n api,mobile -c blue,magenta \"corepack pnpm dev:api\" \"corepack pnpm dev:mobile\"",
     "dev:api": "corepack pnpm run build:packages && corepack pnpm --filter protecther-api dev",
-    "dev:mobile": "corepack pnpm run build:packages && corepack pnpm --filter protecther-mobile start",
+    "dev:mobile": "corepack pnpm run build:packages && corepack pnpm --filter protecther-mobile start:dev",
     "build": "corepack pnpm run build:packages && corepack pnpm --filter protecther-api build",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "corepack pnpm -r typecheck",
     "lint": "biome check .",
     "format": "biome format --write ."
   },
@@ -17,8 +17,5 @@
     "concurrently": "9.1.2",
     "typescript": "5.9.2"
   },
-  "version": "1.0.0",
-  "dependencies": {
-    "expo": "~55.0.8"
-  }
+  "version": "1.0.0"
 }
