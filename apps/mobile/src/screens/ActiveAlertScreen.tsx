@@ -4,6 +4,7 @@ import {
 } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -22,6 +23,7 @@ import { Badge } from "../components/Badge";
 import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import { logMobileTelemetry } from "../lib/telemetry";
+import { ACTIVE_ALERT_ID_STORAGE_KEY } from "../location/locationTaskNames";
 import type { AppStackParamList } from "../navigation/types";
 import { Colors, Radius, Spacing, Typography } from "../theme";
 
@@ -143,6 +145,7 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
         setError("Resposta inválida ao cancelar");
         return;
       }
+      await AsyncStorage.removeItem(ACTIVE_ALERT_ID_STORAGE_KEY);
       navigation.replace("Sos");
     } finally {
       setLoading(false);

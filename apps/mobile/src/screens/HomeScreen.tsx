@@ -12,7 +12,7 @@ import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
-import { useEspButtonBle } from "../hooks/useEspButtonBle";
+import { useEspButtonBleState } from "../ble/EspButtonBleContext";
 import type { AppStackParamList } from "../navigation/types";
 import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
 
@@ -124,16 +124,7 @@ export function HomeScreen({ navigation }: Props) {
     status: bleStatus,
     isConnected: bleConnected,
     error: bleError,
-  } = useEspButtonBle({
-    getAccessToken,
-    onAlertTriggered: (alertId: string) => {
-      navigation.navigate("ActiveAlert", { alertId });
-    },
-    onButtonPress: () => {
-      console.log("Fallback: navegando para tela SOS...");
-      navigation.navigate("Sos");
-    },
-  });
+  } = useEspButtonBleState();
 
   return (
     <View style={styles.container}>

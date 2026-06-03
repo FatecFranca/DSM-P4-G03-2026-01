@@ -18,7 +18,6 @@ async function registerPushToken(accessToken: string): Promise<void> {
   if (!notificationHandlerRegistered) {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
         shouldShowBanner: true,

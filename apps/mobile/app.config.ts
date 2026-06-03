@@ -81,7 +81,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         locationForegroundIntervalMs,
       )
         ? Math.min(Math.max(locationForegroundIntervalMs, 3000), 60_000)
-        : 5000,
+        : 10_000,
       locationBackgroundIntervalMs: Number.isFinite(
         locationBackgroundIntervalMs,
       )

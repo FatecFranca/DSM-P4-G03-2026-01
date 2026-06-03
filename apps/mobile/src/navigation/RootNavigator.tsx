@@ -66,14 +66,7 @@ function AuthNavigator() {
 
 function AppNavigator() {
   return (
-    <AppStack.Navigator
-      screenOptions={{
-        ...screenOptions,
-        headerShown: false,
-        // Mantém Home montada ao abrir ActiveAlert — evita desmontar BLE/GPS em loop.
-        detachInactiveScreens: false,
-      }}
-    >
+    <AppStack.Navigator screenOptions={{ ...screenOptions, headerShown: false }}>
       <AppStack.Screen
         name="Home"
         component={HomeScreen}
