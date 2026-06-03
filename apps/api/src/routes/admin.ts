@@ -85,6 +85,13 @@ function formatTime(date: Date): string {
   return `${h}:${min}`;
 }
 
+/** Postgres EXTRACT/EPOCH via raw SQL often returns numeric as string. */
+function toNumberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   app.get("/admin/dashboard", async (_request, reply) => {
     try {
@@ -113,7 +120,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
              AND aa.acknowledged_at = first_ack.first_ack
             INNER JOIN ${alerts} a ON a.id = aa.alert_id`,
       );
-      const averageArrivalTimeSeconds = avgRow?.avg_seconds ?? null;
+      const averageArrivalTimeSeconds = toNumberOrNull(avgRow?.avg_seconds);
 
       // 4. Active alerts count
       const [activeRow] = await db
@@ -243,7 +250,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
           locationLabel,
           lat: a.lat,
           lng: a.lng,
-          arrivalTimeSeconds: a.row.arrival_seconds ?? null,
+          arrivalTimeSeconds: toNumberOrNull(a.row.arrival_seconds),
           status: a.row.status as "active" | "closed",
         };
       });

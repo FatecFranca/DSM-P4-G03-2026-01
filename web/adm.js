@@ -240,8 +240,16 @@
   function fetchDashboard() {
     fetch(API_BASE + "/admin/dashboard")
       .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
-        return res.json();
+        return res.json().then(function (data) {
+          if (!res.ok) {
+            var msg =
+              data && data.error && data.error.message
+                ? data.error.message
+                : "HTTP " + res.status + " " + res.statusText;
+            throw new Error(msg);
+          }
+          return data;
+        });
       })
       .then(function (data) {
         hideStatus();
@@ -252,7 +260,15 @@
       })
       .catch(function (err) {
         console.error("Dashboard fetch error:", err);
-        showError("Não foi possível carregar os dados. Verifique se a API está rodando em " + API_BASE);
+        var hint =
+          err && err.message && err.message.indexOf("HTTP") !== 0
+            ? err.message
+            : "Não foi possível carregar os dados. Abra o painel em " +
+              API_BASE +
+              "/adm e confira se a API está no ar (health: " +
+              API_BASE +
+              "/health).";
+        showError(hint);
       });
   }
 

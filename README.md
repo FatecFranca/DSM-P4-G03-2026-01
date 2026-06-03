@@ -82,6 +82,29 @@ corepack pnpm dev:api
 corepack pnpm dev:mobile
 ```
 
+### 5. Site Web (landing + painel admin)
+
+A pasta `web/` contém páginas HTML estáticas (landing, equipe e dashboard administrativo). Elas **não rodam sozinhas**: a API (`protecther-api`) serve esses arquivos em desenvolvimento.
+
+**Pré-requisito:** API configurada e em execução (passos 2, 3 e `dev:api` ou `dev` acima).
+
+```bash
+# Só a API (já inclui o site web)
+corepack pnpm dev:api
+```
+
+Com a API na porta padrão (`3000`), abra no navegador:
+
+| Página | URL |
+|--------|-----|
+| Landing (início) | http://localhost:3000/web/index.html |
+| Desenvolvedores | http://localhost:3000/web/desenvolvedores.html |
+| Dashboard admin | http://localhost:3000/adm |
+
+O painel admin consome `GET /admin/dashboard` na mesma origem (`http://localhost:3000`). Se aparecer erro de carregamento, confira se a API está no ar, se as migrações foram aplicadas e se o banco está acessível.
+
+**Apenas HTML/CSS (sem API):** para editar layout da landing, você pode abrir os arquivos em `web/` direto no navegador ou usar um servidor estático local na pasta `web/` — porém o **dashboard admin** (`adm.html`) precisa da API rodando para exibir dados.
+
 ---
 
 ## Configuração do App Mobile
@@ -125,8 +148,9 @@ corepack pnpm --filter protecther-api db:seed
 ```
 protecther/
 ├── apps/
-│   ├── api/          # Backend (Fastify)
+│   ├── api/          # Backend (Fastify) — também serve /web/*
 │   └── mobile/       # App Mobile (React Native + Expo)
+├── web/              # Site estático (landing, adm, desenvolvedores)
 ├── packages/
 │   ├── contracts/    # Tipos compartilhados
 │   └── shared/       # Código compartilhado
@@ -144,3 +168,8 @@ protecther/
 **App mobile não conecta na API?**
 - Use o IP correto para seu dispositivo/emulador
 - Verifique se a API está rodando na porta 3000
+
+**Site web ou `/adm` não carrega dados?**
+- Rode `corepack pnpm dev:api` (ou `corepack pnpm dev`)
+- Acesse pelo mesmo host/porta da API (ex.: `http://localhost:3000/adm`)
+- Confira migrações e `DATABASE_URL` em `apps/api/.env`
