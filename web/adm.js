@@ -20,9 +20,12 @@
 
   var chartDailyCanvas = document.getElementById("chart-daily");
   var chartDonutCanvas = document.getElementById("chart-donut");
+  var chartNeighborhoodsCanvas = document.getElementById("chart-neighborhoods");
 
   var chartDaily = null;
-  var chartDonut = null;
+  var donutCharts = { locations: null, neighborhoods: null };
+
+  var DONUT_COLORS = ["#f6b4c0", "#d08fb8", "#b77aa8", "#ebb6d0", "#c99ab8", "#e8a4bc"];
   var pollTimer = null;
 
   // ── Status helpers ───────────────────────────────────────────────────
@@ -130,20 +133,28 @@
     });
   }
 
-  function renderDonutChart(frequent) {
-    if (chartDonut) { chartDonut.destroy(); chartDonut = null; }
+  function renderDonutChart(canvas, frequent, chartKey) {
+    if (donutCharts[chartKey]) {
+      donutCharts[chartKey].destroy();
+      donutCharts[chartKey] = null;
+    }
+
+    if (!canvas || !frequent || frequent.length === 0) {
+      return;
+    }
 
     var labels = frequent.map(function (f) { return f.label; });
     var values = frequent.map(function (f) { return f.count; });
     var percentages = frequent.map(function (f) { return f.percentage; });
+    var colors = DONUT_COLORS.slice(0, labels.length);
 
-    chartDonut = new Chart(chartDonutCanvas, {
+    donutCharts[chartKey] = new Chart(canvas, {
       type: "doughnut",
       data: {
         labels: labels,
         datasets: [{
           data: values,
-          backgroundColor: ["#f6b4c0", "#d08fb8", "#b77aa8", "#ebb6d0"],
+          backgroundColor: colors,
           borderColor: "#fff6f9",
           borderWidth: 3,
         }],
@@ -255,7 +266,8 @@
         hideStatus();
         renderSummary(data);
         renderDailyChart(data.dailyActivations);
-        renderDonutChart(data.frequentLocations);
+        renderDonutChart(chartDonutCanvas, data.frequentLocations, "locations");
+        renderDonutChart(chartNeighborhoodsCanvas, data.frequentNeighborhoods || [], "neighborhoods");
         renderTable(data.recentAlerts);
       })
       .catch(function (err) {

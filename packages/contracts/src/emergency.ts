@@ -8,8 +8,11 @@ export const CreateInviteRequestSchema = z.object({
 export type CreateInviteRequest = z.infer<typeof CreateInviteRequestSchema>;
 
 export const CreateInviteResponseSchema = z.object({
-  inviteId: UuidSchema,
-  expiresAt: IsoDateTimeSchema,
+  /** True when the target already had an account and the link is active immediately. */
+  linkedImmediately: z.boolean(),
+  inviteId: UuidSchema.optional(),
+  expiresAt: IsoDateTimeSchema.optional(),
+  contactLinkId: UuidSchema.optional(),
   /** Present only in non-production environments for manual testing. */
   devInvitationToken: z.string().min(1).optional(),
 });
@@ -58,3 +61,24 @@ export const ListContactsResponseSchema = z.object({
 });
 
 export type ListContactsResponse = z.infer<typeof ListContactsResponseSchema>;
+
+export const AcceptPendingInvitesResponseSchema = z.object({
+  acceptedCount: z.number().int().nonnegative(),
+});
+
+export type AcceptPendingInvitesResponse = z.infer<
+  typeof AcceptPendingInvitesResponseSchema
+>;
+
+export const DeleteContactParamsSchema = z.object({
+  linkId: UuidSchema,
+});
+
+export type DeleteContactParams = z.infer<typeof DeleteContactParamsSchema>;
+
+export const DeleteContactResponseSchema = z.object({
+  id: UuidSchema,
+  status: z.literal("revoked"),
+});
+
+export type DeleteContactResponse = z.infer<typeof DeleteContactResponseSchema>;

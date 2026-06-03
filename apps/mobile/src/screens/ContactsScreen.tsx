@@ -1,12 +1,12 @@
 import {
-  AcceptInviteResponseSchema,
   CreateInviteRequestSchema,
   CreateInviteResponseSchema,
   ListContactsResponseSchema,
 } from "@protecther/contracts";
+import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { AppButton } from "../components/AppButton";
@@ -16,7 +16,7 @@ import { Badge } from "../components/Badge";
 import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
-import { Colors, Radius, Spacing, Typography } from "../theme";
+import { Colors, Spacing, Typography } from "../theme";
 
 type ContactItem = {
   id: string;
@@ -27,58 +27,84 @@ type ContactItem = {
 
 type Props = NativeStackScreenProps<AppStackParamList, "Contacts">;
 
+const CONTACTS_POLL_MS = 10_000;
+
 export function ContactsScreen(_props: Props) {
   const { getAccessToken } = useAuth();
   const [targetEmail, setTargetEmail] = useState("");
-  const [inviteToken, setInviteToken] = useState("");
-  const [devToken, setDevToken] = useState<string | null>(null);
   const [asOwner, setAsOwner] = useState<ContactItem[]>([]);
   const [asContact, setAsContact] = useState<ContactItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshList = useCallback(async () => {
-    setError(null);
-    setMessage(null);
-    const token = getAccessToken();
-    const result = await apiFetchJson<unknown>("/emergency/contacts", {
-      method: "GET",
-      accessToken: token,
-    });
-    if (!result.ok) {
-      setError(formatApiError(result.body));
-      return;
-    }
-    const parsed = ListContactsResponseSchema.safeParse(result.data);
-    if (!parsed.success) {
-      setError("Lista inválida da API");
-      return;
-    }
-    setAsOwner(
-      parsed.data.asOwner.map((r) => ({
-        id: r.id,
-        name: r.contact.name,
-        email: r.contact.email,
-        since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
-      })),
-    );
-    setAsContact(
-      parsed.data.asContact.map((r) => ({
-        id: r.id,
-        name: r.owner.name,
-        email: r.owner.email,
-        since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
-      })),
-    );
-    setLoaded(true);
-  }, [getAccessToken]);
+  const refreshList = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        setError(null);
+        setMessage(null);
+      }
+      setRefreshing(true);
+      try {
+        const token = getAccessToken();
+        const result = await apiFetchJson<unknown>("/emergency/contacts", {
+          method: "GET",
+          accessToken: token,
+        });
+        if (!result.ok) {
+          if (!options?.silent) {
+            setError(formatApiError(result.body));
+          }
+          return;
+        }
+        const parsed = ListContactsResponseSchema.safeParse(result.data);
+        if (!parsed.success) {
+          if (!options?.silent) {
+            setError("Lista inválida da API");
+          }
+          return;
+        }
+        setAsOwner(
+          parsed.data.asOwner.map((r) => ({
+            id: r.id,
+            name: r.contact.name,
+            email: r.contact.email,
+            since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
+          })),
+        );
+        setAsContact(
+          parsed.data.asContact.map((r) => ({
+            id: r.id,
+            name: r.owner.name,
+            email: r.owner.email,
+            since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
+          })),
+        );
+        setLoaded(true);
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [getAccessToken],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshList();
+      const timer = setInterval(() => {
+        void refreshList({ silent: true });
+      }, CONTACTS_POLL_MS);
+      return () => {
+        clearInterval(timer);
+      };
+    }, [refreshList]),
+  );
 
   const createInvite = async () => {
     setError(null);
     setMessage(null);
-    setDevToken(null);
     const parsed = CreateInviteRequestSchema.safeParse({ targetEmail });
     if (!parsed.success) {
       setError(parsed.error.message);
@@ -100,45 +126,50 @@ export function ContactsScreen(_props: Props) {
         setError("Resposta de convite inválida");
         return;
       }
-      if (body.data.devInvitationToken) {
-        setDevToken(body.data.devInvitationToken);
-      }
-      setMessage("✅ Convite enviado com sucesso!");
+      setMessage(
+        body.data.linkedImmediately
+          ? "✅ Contato adicionado! Ele já aparece na lista."
+          : "✅ Convite enviado! Quando abrir o app com este e-mail, o vínculo será ativado automaticamente.",
+      );
       setTargetEmail("");
-      await refreshList();
+      await refreshList({ silent: true });
     } finally {
       setLoading(false);
     }
   };
 
-  const acceptInvite = async () => {
+  const confirmRemove = (item: ContactItem, role: "owner" | "contact") => {
+    const label =
+      role === "owner"
+        ? `Remover ${item.name} dos seus contatos?`
+        : `Deixar de ser contato de ${item.name}?`;
+
+    Alert.alert("Remover vínculo", label, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Remover",
+        style: "destructive",
+        onPress: () => void removeContact(item.id),
+      },
+    ]);
+  };
+
+  const removeContact = async (linkId: string) => {
     setError(null);
     setMessage(null);
-    const token = inviteToken.trim();
-    if (token.length < 16) {
-      setError("Cole o token do convite");
-      return;
-    }
     setLoading(true);
     try {
-      const path = `/emergency/invites/${encodeURIComponent(token)}/accept`;
+      const path = `/emergency/contacts/${encodeURIComponent(linkId)}`;
       const result = await apiFetchJson<unknown>(path, {
-        method: "POST",
-        body: JSON.stringify({}),
+        method: "DELETE",
         accessToken: getAccessToken(),
       });
       if (!result.ok) {
         setError(formatApiError(result.body));
         return;
       }
-      const body = AcceptInviteResponseSchema.safeParse(result.data);
-      if (!body.success) {
-        setError("Resposta de aceite inválida");
-        return;
-      }
-      setMessage(`✅ Vínculo ativo com ${body.data.link.owner.name}!`);
-      setInviteToken("");
-      await refreshList();
+      setMessage("Vínculo removido.");
+      await refreshList({ silent: true });
     } finally {
       setLoading(false);
     }
@@ -159,24 +190,20 @@ export function ContactsScreen(_props: Props) {
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Header */}
-      <Text style={styles.title}>Contatos de Emergência</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Contatos de Emergência</Text>
+        {refreshing ? (
+          <Text style={styles.refreshHint}>Atualizando…</Text>
+        ) : null}
+      </View>
 
-      <AppButton
-        title="Atualizar lista"
-        variant="outline"
-        onPress={() => void refreshList()}
-        small
-      />
-
-      {/* As Owner */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>👤 Meus contatos</Text>
         <Text style={styles.sectionDesc}>
           Pessoas que você adicionou como contato de emergência
         </Text>
         {!loaded ? (
-          <Text style={styles.muted}>Toque em "Atualizar lista"</Text>
+          <Text style={styles.muted}>Carregando…</Text>
         ) : asOwner.length === 0 ? (
           <Text style={styles.muted}>Nenhum contato adicionado ainda</Text>
         ) : (
@@ -191,16 +218,26 @@ export function ContactsScreen(_props: Props) {
                 <Text style={styles.contactEmail}>{c.email}</Text>
                 <Text style={styles.contactSince}>Desde {c.since}</Text>
               </View>
-              <Badge label="Ativo" variant="safe" />
+              <View style={styles.contactActions}>
+                <Badge label="Ativo" variant="safe" />
+                <AppButton
+                  title="Remover"
+                  variant="outline"
+                  onPress={() => confirmRemove(c, "owner")}
+                  small
+                  style={styles.removeBtn}
+                />
+              </View>
             </GlassCard>
           ))
         )}
       </View>
 
-      {/* As Contact */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🤝 Sou contato de</Text>
-        <Text style={styles.sectionDesc}>Titulares que você protege</Text>
+        <Text style={styles.sectionDesc}>
+          Titulares que você protege (vínculo automático ao abrir o app)
+        </Text>
         {!loaded ? null : asContact.length === 0 ? (
           <Text style={styles.muted}>Nenhum vínculo como contato</Text>
         ) : (
@@ -215,15 +252,27 @@ export function ContactsScreen(_props: Props) {
                 <Text style={styles.contactEmail}>{c.email}</Text>
                 <Text style={styles.contactSince}>Desde {c.since}</Text>
               </View>
-              <Badge label="Ativo" variant="safe" />
+              <View style={styles.contactActions}>
+                <Badge label="Ativo" variant="safe" />
+                <AppButton
+                  title="Remover"
+                  variant="outline"
+                  onPress={() => confirmRemove(c, "contact")}
+                  small
+                  style={styles.removeBtn}
+                />
+              </View>
             </GlassCard>
           ))
         )}
       </View>
 
-      {/* New Invite */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>✉️ Convidar contato</Text>
+        <Text style={styles.sectionTitle}>✉️ Adicionar contato</Text>
+        <Text style={styles.sectionDesc}>
+          Informe o e-mail da pessoa. Se ela já usa o app, o vínculo é imediato;
+          caso contrário, ativa sozinha no primeiro acesso com esse e-mail.
+        </Text>
         <AppInput
           label="E-mail do contato"
           placeholder="email@contato.com"
@@ -233,7 +282,7 @@ export function ContactsScreen(_props: Props) {
           keyboardType="email-address"
         />
         <AppButton
-          title="Enviar convite"
+          title="Adicionar"
           onPress={() => void createInvite()}
           loading={loading}
           small
@@ -241,37 +290,6 @@ export function ContactsScreen(_props: Props) {
         />
       </View>
 
-      {/* Dev Token */}
-      {devToken ? (
-        <GlassCard style={styles.devBox}>
-          <Text style={styles.devLabel}>🔧 DEV — token do convite</Text>
-          <Text selectable style={styles.devToken}>
-            {devToken}
-          </Text>
-        </GlassCard>
-      ) : null}
-
-      {/* Accept Invite */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🔗 Aceitar convite</Text>
-        <AppInput
-          label="Token do convite"
-          placeholder="Cole o token recebido"
-          value={inviteToken}
-          onChangeText={setInviteToken}
-          autoCapitalize="none"
-        />
-        <AppButton
-          title="Aceitar convite"
-          variant="outline"
-          onPress={() => void acceptInvite()}
-          loading={loading}
-          small
-          style={{ marginTop: Spacing.sm }}
-        />
-      </View>
-
-      {/* Feedback */}
       {message ? <Text style={styles.success}>{message}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </ScrollView>
@@ -289,9 +307,20 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxxl,
     gap: Spacing.lg,
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: Spacing.sm,
+  },
   title: {
     ...Typography.h1,
     color: Colors.textPrimary,
+    flex: 1,
+  },
+  refreshHint: {
+    ...Typography.caption,
+    color: Colors.textMuted,
   },
   section: {
     gap: Spacing.sm,
@@ -332,17 +361,12 @@ const styles = StyleSheet.create({
     ...Typography.small,
     color: Colors.textMuted,
   },
-  devBox: {
-    gap: Spacing.sm,
+  contactActions: {
+    alignItems: "flex-end",
+    gap: Spacing.xs,
   },
-  devLabel: {
-    ...Typography.captionBold,
-    color: Colors.warning,
-  },
-  devToken: {
-    fontFamily: "monospace",
-    fontSize: 11,
-    color: Colors.textSecondary,
+  removeBtn: {
+    minWidth: 88,
   },
   success: {
     ...Typography.caption,

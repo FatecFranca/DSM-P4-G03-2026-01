@@ -1,5 +1,5 @@
 import { DashboardResponseSchema } from "@protecther/contracts";
-import { count, desc, eq, sql } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import {
@@ -12,17 +12,78 @@ import {
 const RECENT_ALERTS_LIMIT = 20;
 const DAILY_ACTIVATIONS_DAYS = 30;
 const FREQUENT_LOCATIONS_LIMIT = 4;
+const GEOCODE_CLUSTER_LIMIT = 40;
+
+type NominatimAddress = Record<string, string>;
+
+type GeocodeDetails = {
+  displayLabel: string | null;
+  city: string | null;
+  neighborhood: string | null;
+};
 
 /**
  * Reverse geocode using Nominatim (OpenStreetMap).
  * Includes caching so repeated coordinate lookups don't hit the API again.
  */
-const geocodeCache = new Map<string, string | null>();
+const geocodeCache = new Map<string, GeocodeDetails | null>();
 
-async function reverseGeocode(
+function extractCity(address: NominatimAddress): string | null {
+  return (
+    address.city ??
+    address.town ??
+    address.municipality ??
+    address.village ??
+    null
+  );
+}
+
+/**
+ * Bairro mais específico primeiro: no Brasil o OSM costuma usar
+ * neighbourhood para o bairro da rua e suburb para uma zona maior (ex.: Vera Cruz III).
+ */
+function extractNeighborhood(address: NominatimAddress): string | null {
+  return (
+    address.neighbourhood ??
+    address.suburb ??
+    address.quarter ??
+    address.residential ??
+    null
+  );
+}
+
+function buildDisplayLabel(
+  displayName: string,
+  address: NominatimAddress = {},
+): string {
+  const road = address.road ?? address.pedestrian ?? address.footway;
+  const neighborhood = extractNeighborhood(address);
+  const city = extractCity(address);
+
+  if (road || neighborhood || city) {
+    const parts: string[] = [];
+    if (road) parts.push(road);
+    if (neighborhood) parts.push(neighborhood);
+    if (city && city !== neighborhood) parts.push(city);
+    if (parts.length > 0) return parts.join(", ");
+  }
+
+  const parts = displayName.split(",").map((s) => s.trim());
+  const relevant: string[] = [];
+  for (const part of parts) {
+    if (/^\d{5}-\d{3}$/.test(part)) continue;
+    if (part === "Brasil" || part === "Estados Unidos da América") continue;
+    if (/^Região\s/.test(part)) continue;
+    if (part === city || part === neighborhood) continue;
+    relevant.push(part);
+  }
+  return relevant.slice(0, 3).join(", ") || displayName;
+}
+
+async function reverseGeocodeDetails(
   lat: number,
   lng: number,
-): Promise<string | null> {
+): Promise<GeocodeDetails | null> {
   const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
   if (geocodeCache.has(key)) {
     return geocodeCache.get(key) ?? null;
@@ -47,29 +108,85 @@ async function reverseGeocode(
       return null;
     }
 
-    const data = (await res.json()) as { display_name?: string };
+    const data = (await res.json()) as {
+      display_name?: string;
+      address?: NominatimAddress;
+    };
     const displayName = data?.display_name;
     if (!displayName) {
       geocodeCache.set(key, null);
       return null;
     }
 
-    // Build clean address: street, number, neighborhood, city, state
-    const parts = displayName.split(",").map((s) => s.trim());
-    const relevant: string[] = [];
-    for (const part of parts) {
-      if (/^\d{5}-\d{3}$/.test(part)) continue;
-      if (part === "Brasil") continue;
-      if (/^Região\s/.test(part)) continue;
-      relevant.push(part);
-    }
-    const address = relevant.slice(0, 4).join(", ");
-    geocodeCache.set(key, address || displayName);
-    return address || displayName;
+    const address = data.address ?? {};
+    const details: GeocodeDetails = {
+      displayLabel: buildDisplayLabel(displayName, address),
+      city: extractCity(address),
+      neighborhood: extractNeighborhood(address),
+    };
+    geocodeCache.set(key, details);
+    return details;
   } catch {
     geocodeCache.set(key, null);
     return null;
   }
+}
+
+async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<string | null> {
+  const details = await reverseGeocodeDetails(lat, lng);
+  return details?.displayLabel ?? null;
+}
+
+type FrequentPlaceRow = {
+  label: string;
+  count: number;
+  percentage: number;
+};
+
+function normalizePlaceKey(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+}
+
+/** Agrupa contagens pelo nome normalizado (evita o mesmo bairro em fatias distintas). */
+function addPlaceCount(
+  counts: Map<string, { label: string; count: number }>,
+  label: string,
+  delta: number,
+): void {
+  const trimmed = label.trim();
+  const key = normalizePlaceKey(trimmed);
+  if (!key) return;
+  const existing = counts.get(key);
+  if (existing) {
+    existing.count += delta;
+  } else {
+    counts.set(key, { label: trimmed, count: delta });
+  }
+}
+
+function buildTopFrequentPlaces(
+  counts: Map<string, { label: string; count: number }>,
+  limit: number,
+  unknownLabel: string,
+): FrequentPlaceRow[] {
+  const sorted = Array.from(counts.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+
+  const total = sorted.reduce((sum, row) => sum + row.count, 0);
+  return sorted.map((row) => ({
+    label: row.label || unknownLabel,
+    count: row.count,
+    percentage:
+      total > 0 ? Math.round((row.count / total) * 10000) / 100 : 0,
+  }));
 }
 
 function formatDate(date: Date): string {
@@ -194,6 +311,53 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
             : 0,
       }));
 
+      // Primeira localização de cada alerta (igual à tabela de estatísticas).
+      // Rastreamento contínuo gera centenas de pings; um desvio de GPS não deve
+      // criar um bairro fantasma no gráfico (ex.: Luíza II com 1 ping).
+      const clusterRows = await db.execute<{
+        lat: number;
+        lng: number;
+        count: number;
+      }>(
+        sql`SELECT ROUND(first_loc.lat::numeric, 3) AS lat,
+                   ROUND(first_loc.lng::numeric, 3) AS lng,
+                   COUNT(*)::int AS count
+            FROM (
+              SELECT DISTINCT ON (al.alert_id)
+                     al.alert_id,
+                     al.lat,
+                     al.lng
+              FROM ${alertLocations} al
+              WHERE al.lat <> 0 OR al.lng <> 0
+              ORDER BY al.alert_id, al.captured_at ASC
+            ) first_loc
+            GROUP BY ROUND(first_loc.lat::numeric, 3), ROUND(first_loc.lng::numeric, 3)
+            ORDER BY count DESC
+            LIMIT ${GEOCODE_CLUSTER_LIMIT}`,
+      );
+
+      const neighborhoodCounts = new Map<
+        string,
+        { label: string; count: number }
+      >();
+
+      await Promise.all(
+        clusterRows.map(async (row) => {
+          const lat = Number(row.lat);
+          const lng = Number(row.lng);
+          if (lat === 0 && lng === 0) return;
+          const details = await reverseGeocodeDetails(lat, lng);
+          if (!details?.neighborhood) return;
+          addPlaceCount(neighborhoodCounts, details.neighborhood, row.count);
+        }),
+      );
+
+      const frequentNeighborhoods = buildTopFrequentPlaces(
+        neighborhoodCounts,
+        FREQUENT_LOCATIONS_LIMIT,
+        "Bairro desconhecido",
+      );
+
       // 8. Recent alerts with location, timing, AND reverse geocoded address
       const recentRows = await db.execute<{
         id: string;
@@ -263,6 +427,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         totalUsers,
         dailyActivations,
         frequentLocations,
+        frequentNeighborhoods,
         recentAlerts: recentAlertsOut,
       });
 

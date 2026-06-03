@@ -2,8 +2,11 @@ import { randomBytes } from "node:crypto";
 import {
   AcceptInviteParamsSchema,
   AcceptInviteResponseSchema,
+  AcceptPendingInvitesResponseSchema,
   CreateInviteRequestSchema,
   CreateInviteResponseSchema,
+  DeleteContactParamsSchema,
+  DeleteContactResponseSchema,
   EmergencyContactLinkSchema,
   ListContactsResponseSchema,
 } from "@protecther/contracts";
@@ -15,6 +18,12 @@ import { emergencyContacts, invites, users } from "../db/schema.js";
 import { normalizeEmail } from "../lib/email.js";
 import { apiError } from "../lib/httpErrors.js";
 import { toUserPublic } from "../lib/mappers.js";
+import {
+  acceptInviteRecord,
+  acceptPendingInvitesForUser,
+  activateEmergencyContactLink,
+  isPgUniqueViolation,
+} from "../services/emergency/contactLinks.js";
 import type { EmergencyInviteEmailSender } from "../services/email/types.js";
 
 const INVITE_TTL_HOURS = Number(process.env.INVITE_TTL_HOURS ?? 72);
@@ -54,7 +63,7 @@ export async function registerEmergencyRoutes(
       return reply.status(401).send(apiError("UNAUTHORIZED", "User not found"));
     }
 
-    if (targetEmail === owner.email) {
+    if (targetEmail === normalizeEmail(owner.email)) {
       return reply
         .status(400)
         .send(apiError("SELF_INVITE", "Cannot invite your own email"));
@@ -88,6 +97,69 @@ export async function registerEmergencyRoutes(
               "An active emergency contact link already exists",
             ),
           );
+      }
+
+      try {
+        const linkRow = await db.transaction(async (tx) => {
+          await tx
+            .update(invites)
+            .set({ status: "accepted" })
+            .where(
+              and(
+                eq(invites.ownerUserId, owner.id),
+                eq(invites.targetEmail, targetEmail),
+                eq(invites.status, "pending"),
+              ),
+            );
+
+          await activateEmergencyContactLink(
+            tx,
+            owner.id,
+            targetUser.id,
+          );
+
+          const [row] = await tx
+            .select()
+            .from(emergencyContacts)
+            .where(
+              and(
+                eq(emergencyContacts.ownerUserId, owner.id),
+                eq(emergencyContacts.contactUserId, targetUser.id),
+                eq(emergencyContacts.status, "active"),
+              ),
+            )
+            .limit(1);
+
+          return row;
+        });
+
+        if (!linkRow) {
+          return reply
+            .status(500)
+            .send(apiError("LINK_MISSING", "Could not load created link"));
+        }
+
+        const body = CreateInviteResponseSchema.parse({
+          linkedImmediately: true,
+          contactLinkId: linkRow.id,
+        });
+
+        return reply.status(201).send(body);
+      } catch (error) {
+        if (isPgUniqueViolation(error)) {
+          return reply
+            .status(409)
+            .send(
+              apiError(
+                "CONTACT_EXISTS",
+                "An active emergency contact link already exists",
+              ),
+            );
+        }
+        request.log.error({ err: error }, "create_immediate_link_failed");
+        return reply
+          .status(500)
+          .send(apiError("INTERNAL_ERROR", "Unexpected error"));
       }
     }
 
@@ -137,12 +209,26 @@ export async function registerEmergencyRoutes(
     });
 
     const body = CreateInviteResponseSchema.parse({
+      linkedImmediately: false,
       inviteId: inviteRow.id,
       expiresAt: inviteRow.expiresAt.toISOString(),
       ...(isNonProductionNodeEnv() ? { devInvitationToken: token } : {}),
     });
 
     return reply.status(201).send(body);
+  });
+
+  app.post("/invites/accept-pending", async (request, reply) => {
+    const userId = getUserId(request);
+    if (!userId) {
+      return reply
+        .status(401)
+        .send(apiError("UNAUTHORIZED", "Missing authentication"));
+    }
+
+    const acceptedCount = await acceptPendingInvitesForUser(userId);
+    const body = AcceptPendingInvitesResponseSchema.parse({ acceptedCount });
+    return reply.send(body);
   });
 
   app.post("/invites/:token/accept", async (request, reply) => {
@@ -236,24 +322,15 @@ export async function registerEmergencyRoutes(
 
     try {
       await db.transaction(async (tx) => {
-        await tx
-          .update(invites)
-          .set({ status: "accepted" })
-          .where(eq(invites.id, inviteRow.id));
-
-        await tx.insert(emergencyContacts).values({
-          ownerUserId: inviteRow.ownerUserId,
-          contactUserId: invitee.id,
-          status: "active",
-        });
+        await acceptInviteRecord(
+          tx,
+          inviteRow.id,
+          inviteRow.ownerUserId,
+          invitee.id,
+        );
       });
     } catch (error) {
-      const code =
-        typeof error === "object" && error !== null
-          ? ((error as { code?: string }).code ??
-            (error as { cause?: { code?: string } }).cause?.code)
-          : undefined;
-      if (code === "23505") {
+      if (isPgUniqueViolation(error)) {
         return reply
           .status(409)
           .send(
@@ -299,6 +376,60 @@ export async function registerEmergencyRoutes(
     return reply.send(body);
   });
 
+  app.delete("/contacts/:linkId", async (request, reply) => {
+    const userId = getUserId(request);
+    if (!userId) {
+      return reply
+        .status(401)
+        .send(apiError("UNAUTHORIZED", "Missing authentication"));
+    }
+
+    const params = DeleteContactParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply
+        .status(400)
+        .send(apiError("VALIDATION_ERROR", params.error.message));
+    }
+
+    const [linkRow] = await db
+      .select()
+      .from(emergencyContacts)
+      .where(
+        and(
+          eq(emergencyContacts.id, params.data.linkId),
+          eq(emergencyContacts.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!linkRow) {
+      return reply
+        .status(404)
+        .send(apiError("CONTACT_NOT_FOUND", "Contact link not found"));
+    }
+
+    const isParticipant =
+      linkRow.ownerUserId === userId || linkRow.contactUserId === userId;
+
+    if (!isParticipant) {
+      return reply
+        .status(403)
+        .send(apiError("FORBIDDEN", "You cannot remove this contact link"));
+    }
+
+    await db
+      .update(emergencyContacts)
+      .set({ status: "revoked" })
+      .where(eq(emergencyContacts.id, linkRow.id));
+
+    const body = DeleteContactResponseSchema.parse({
+      id: linkRow.id,
+      status: "revoked" as const,
+    });
+
+    return reply.send(body);
+  });
+
   app.get("/contacts", async (request, reply) => {
     const userId = getUserId(request);
     if (!userId) {
@@ -306,6 +437,8 @@ export async function registerEmergencyRoutes(
         .status(401)
         .send(apiError("UNAUTHORIZED", "Missing authentication"));
     }
+
+    await acceptPendingInvitesForUser(userId);
 
     const asOwnerRows = await db
       .select({
