@@ -25,7 +25,7 @@ export function createAlertContactsPushOrchestrator(
         provider,
         alertId,
         "alert_started",
-        "normal",
+        "high",
       );
     },
 
@@ -85,9 +85,18 @@ async function deliverToActiveContacts(
     );
 
   if (tokenRows.length === 0) {
+    log.warn(
+      { alertId, contactCount: contactIds.length, contactIds },
+      "push_skipped_no_tokens",
+    );
     logAlertTelemetry(log, "push_skipped_no_tokens", { alertId });
     return;
   }
+
+  log.info(
+    { alertId, kind, tokenCount: tokenRows.length },
+    "push_sending_to_contacts",
+  );
 
   const title = "ProtectHer";
   const body =
@@ -145,6 +154,15 @@ async function deliverToActiveContacts(
     if (r.ok) {
       logAlertTelemetry(log, "push_sent", { alertId });
     } else {
+      log.warn(
+        {
+          alertId,
+          recipientUserId: row.userId,
+          errorCode: r.errorCode ?? "UNKNOWN",
+          kind,
+        },
+        "push_delivery_failed",
+      );
       logAlertTelemetry(log, "push_failed", { alertId });
     }
   }

@@ -115,10 +115,12 @@ corepack pnpm -C C:/src/pi4semestre/protecther lint
 
 ## Sprint 3.1 — Checklist manual (fluxo crítico)
 
-Pré-requisitos: API migrada, `JWT_SECRET` válido; em **produção**, `FIREBASE_SERVICE_ACCOUNT_JSON` preenchido para push real (sem isso, envios são registrados como falha `PROVIDER_NOT_CONFIGURED`).
+Pré-requisitos: API migrada, `JWT_SECRET` válido; `FIREBASE_SERVICE_ACCOUNT_JSON` preenchido para push real.
+
+**Push em desenvolvimento local:** com `NODE_ENV=development`, a API só **simula** envio (`push_dev_log`) até você definir `PUSH_USE_FCM_IN_DEV=true` **e** `FIREBASE_SERVICE_ACCOUNT_JSON`. No log de subida da API deve aparecer `push_provider_selected` com `pushProviderMode: "fcm"`.
 
 1. **Titular inicia alerta** — SOS → alerta visível ou discreto; nos logs da API deve aparecer `telemetry: alert_started` e tentativas de push (`push_sent` / `push_failed` conforme tokens).
-2. **Contato recebe push** — contato com app instalado (build nativo ou dev client com notificações), logado, com permissão de notificação; token registrado após login.
+2. **Contato recebe push** — dev client (`pnpm --filter protecther-mobile start:dev` + `run:android`), **não** Expo Go; contato logado com convite aceito; permissão de notificação; no Metro `[telemetry] push_token_registered`. Sem isso: `push_skipped_no_tokens` na API.
 3. **Contato abre detalhe e vê trilha** — Alertas das titulares → detalhe; pontos aparecem conforme ingestão.
 4. **Titular em background** — com permissão **“Sempre”** / background location concedida, minimizar o app; verificar que pontos continuam em `GET /alerts/:id/locations` (ou logs `location_point_sent` no mobile em dev).
 5. **Rede off/on** — modo avião curto na titular; ao voltar, fila local deve drenar (telemetria `location_queue_*` no console em `__DEV__`).

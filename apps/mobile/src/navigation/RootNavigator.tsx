@@ -12,6 +12,7 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
 import { SosScreen } from "../screens/SosScreen";
 import { Colors, Typography } from "../theme";
+import { navigationRef } from "./navigationRef";
 import type { AppStackParamList, AuthStackParamList } from "./types";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -66,7 +67,12 @@ function AuthNavigator() {
 function AppNavigator() {
   return (
     <AppStack.Navigator
-      screenOptions={{ ...screenOptions, headerShown: false }}
+      screenOptions={{
+        ...screenOptions,
+        headerShown: false,
+        // Mantém Home montada ao abrir ActiveAlert — evita desmontar BLE/GPS em loop.
+        detachInactiveScreens: false,
+      }}
     >
       <AppStack.Screen
         name="Home"
@@ -119,7 +125,7 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={DarkNavTheme}>
+    <NavigationContainer ref={navigationRef} theme={DarkNavTheme}>
       {state.status === "authenticated" ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

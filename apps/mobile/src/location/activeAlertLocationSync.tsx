@@ -49,11 +49,15 @@ async function persistActiveAlertId(alertId: string | null): Promise<void> {
 export function ActiveAlertLocationSync() {
   const { state, getAccessToken } = useAuth();
   const fgSub = useRef<Location.LocationSubscription | null>(null);
+  const fgWatchAlertIdRef = useRef<string | null>(null);
+  const streamModeLoggedRef = useRef<string | null>(null);
+  const lastQueueDepthLoggedRef = useRef(0);
   const appState = useRef<AppStateStatus>(AppState.currentState);
 
   const stopForeground = useCallback(() => {
     fgSub.current?.remove();
     fgSub.current = null;
+    fgWatchAlertIdRef.current = null;
   }, []);
 
   const stopBackground = useCallback(async () => {
@@ -67,6 +71,9 @@ export function ActiveAlertLocationSync() {
 
   const startForegroundWatch = useCallback(
     (alertId: string) => {
+      if (fgWatchAlertIdRef.current === alertId && fgSub.current) {
+        return;
+      }
       stopForeground();
       void (async () => {
         const perm = await Location.getForegroundPermissionsAsync();
@@ -76,9 +83,9 @@ export function ActiveAlertLocationSync() {
         try {
           fgSub.current = await Location.watchPositionAsync(
             {
-              accuracy: Location.Accuracy.High,
+              accuracy: Location.Accuracy.Balanced,
               timeInterval: fgIntervalMs(),
-              distanceInterval: 5,
+              distanceInterval: 15,
             },
             async (loc) => {
               const token = getAccessToken();
@@ -118,9 +125,9 @@ export function ActiveAlertLocationSync() {
                 dedupeKey,
                 getAccessToken,
               );
-              logMobileTelemetry("location_point_sent", { alertId });
             },
           );
+          fgWatchAlertIdRef.current = alertId;
         } catch {
           logMobileTelemetry("location_stream_failed", {
             reason: "fg_watch_start",
@@ -138,10 +145,14 @@ export function ActiveAlertLocationSync() {
     }
     const bg = await Location.getBackgroundPermissionsAsync();
     if (bg.status !== "granted") {
-      logMobileTelemetry("location_stream_started", {
-        alertId,
-        mode: "foreground_only",
-      });
+      const modeKey = `${alertId}:foreground_only`;
+      if (streamModeLoggedRef.current !== modeKey) {
+        streamModeLoggedRef.current = modeKey;
+        logMobileTelemetry("location_stream_started", {
+          alertId,
+          mode: "foreground_only",
+        });
+      }
       return;
     }
     await persistActiveAlertId(alertId);
@@ -161,10 +172,14 @@ export function ActiveAlertLocationSync() {
               "Localização ativa durante o alerta para seus contatos.",
           },
         });
-        logMobileTelemetry("location_stream_started", {
-          alertId,
-          mode: "background",
-        });
+        const modeKey = `${alertId}:background`;
+        if (streamModeLoggedRef.current !== modeKey) {
+          streamModeLoggedRef.current = modeKey;
+          logMobileTelemetry("location_stream_started", {
+            alertId,
+            mode: "background",
+          });
+        }
       } catch {
         logMobileTelemetry("location_stream_failed", {
           reason: "bg_start_failed",
@@ -176,6 +191,8 @@ export function ActiveAlertLocationSync() {
   const sync = useCallback(async () => {
     if (state.status !== "authenticated") {
       await persistActiveAlertId(null);
+      streamModeLoggedRef.current = null;
+      lastQueueDepthLoggedRef.current = 0;
       stopForeground();
       await stopBackground();
       return;
@@ -185,7 +202,8 @@ export function ActiveAlertLocationSync() {
       return;
     }
     const depth = await getLocationQueueDepth();
-    if (depth > 0) {
+    if (depth > 0 && depth !== lastQueueDepthLoggedRef.current) {
+      lastQueueDepthLoggedRef.current = depth;
       logMobileTelemetry("location_queue_depth", { depth });
     }
     void flushLocationQueue(getAccessToken);
@@ -201,6 +219,8 @@ export function ActiveAlertLocationSync() {
     const active = parsed.success ? parsed.data.alert : null;
     if (!active) {
       await persistActiveAlertId(null);
+      streamModeLoggedRef.current = null;
+      lastQueueDepthLoggedRef.current = 0;
       stopForeground();
       await stopBackground();
       logMobileTelemetry("location_stream_stopped", {});
@@ -217,8 +237,14 @@ export function ActiveAlertLocationSync() {
 
     await tryStartBackground(active.id);
 
-    if (appState.current === "active") {
+    const bg = await Location.getBackgroundPermissionsAsync();
+    const bgRunning = await Location.hasStartedLocationUpdatesAsync(
+      BACKGROUND_LOCATION_TASK,
+    );
+    if (appState.current === "active" && !(bg.status === "granted" && bgRunning)) {
       startForegroundWatch(active.id);
+    } else if (bg.status === "granted" && bgRunning) {
+      stopForeground();
     }
   }, [
     getAccessToken,

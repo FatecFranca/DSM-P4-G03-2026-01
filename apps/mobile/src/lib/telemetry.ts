@@ -7,7 +7,12 @@ export type MobileTelemetryEvent =
   | "location_queue_flushed"
   | "location_queue_depth"
   | "location_flush_rate_limited"
-  | "alert_acknowledged";
+  | "alert_acknowledged"
+  | "push_token_skipped"
+  | "push_permission_denied"
+  | "push_token_registered"
+  | "push_token_register_failed"
+  | "push_notification_received";
 
 /** Sem PII: apenas códigos/ids já expostos ao cliente. */
 export function logMobileTelemetry(

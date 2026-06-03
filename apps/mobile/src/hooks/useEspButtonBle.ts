@@ -55,7 +55,9 @@ export function useEspButtonBle(
       return;
     }
 
-    console.log("Desconectando BLE e limpando recursos...");
+    if (__DEV__) {
+      console.log("Desconectando BLE e limpando recursos...");
+    }
     isScanningRef.current = false;
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -177,8 +179,13 @@ export function useEspButtonBle(
           CHARACTERISTIC_UUID,
           (monitorError: BleError | null, characteristic) => {
             if (monitorError) {
-              console.log("erro no monitoramento:", monitorError.message);
-              if (mountedRef.current) {
+              const cancelled =
+                monitorError.message === "Operation was cancelled" ||
+                monitorError.message.includes("cancelled");
+              if (__DEV__ && !cancelled) {
+                console.log("erro no monitoramento:", monitorError.message);
+              }
+              if (mountedRef.current && !cancelled) {
                 setError(monitorError.message);
                 setStatus("Erro de conexão");
                 setIsConnected(false);

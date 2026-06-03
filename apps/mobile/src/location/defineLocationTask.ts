@@ -65,5 +65,4 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
     dedupeKey,
     () => session.accessToken,
   );
-  logMobileTelemetry("location_point_sent", { alertId });
 });

@@ -52,6 +52,11 @@ export async function registerDeviceRoutes(
         },
       });
 
+    request.log.info(
+      { userId, platform: parsed.data.platform, tokenPrefix: `${parsed.data.token.slice(0, 12)}…` },
+      "push_token_registered",
+    );
+
     const body = RegisterPushTokenResponseSchema.parse({ ok: true as const });
     return reply.send(body);
   });

@@ -5,6 +5,10 @@ dist
 .DS_Store
 .env
 .env.local
+# Firebase Admin SDK key (nunca commitar)
+**/firebase-adminsdk*.json
+apps/api/firebase-service-account.json
+apps/mobile/*firebase-adminsdk*.json
 *.tsbuildinfo
 /android/.gradle
 /android/.gradle

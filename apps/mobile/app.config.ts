@@ -37,6 +37,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       ...config.android,
+      package: config.android?.package ?? "com.protecther.app",
+      googleServicesFile:
+        process.env.GOOGLE_SERVICES_FILE ?? "./google-services.json",
       permissions: [
         ...new Set([
           ...(config.android?.permissions ?? []),
@@ -63,7 +66,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           isAndroidBackgroundLocationEnabled: true,
         },
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          defaultChannel: "alerts",
+          color: "#E11D48",
+        },
+      ],
     ],
     extra: {
       ...config.extra,

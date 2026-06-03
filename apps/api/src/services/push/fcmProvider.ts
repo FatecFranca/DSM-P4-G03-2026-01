@@ -27,9 +27,15 @@ export function createFcmPushProvider(): PushProvider {
       const fbMessages: admin.messaging.Message[] = messages.map((m) => ({
         token: m.token,
         notification: { title: m.title, body: m.body },
-        data: m.data,
+        data: Object.fromEntries(
+          Object.entries(m.data ?? {}).map(([k, v]) => [k, String(v)]),
+        ),
         android: {
           priority: m.androidPriority === "high" ? "high" : "normal",
+          notification: {
+            channelId: "alerts",
+            priority: m.androidPriority === "high" ? "high" : "default",
+          },
         },
         apns: {
           headers: {

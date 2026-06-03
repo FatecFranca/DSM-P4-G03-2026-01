@@ -11,7 +11,10 @@
     "lint": "biome check .",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:baseline": "tsx src/db/baseline-migrations.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "push:diagnostics": "tsx scripts/push-diagnostics.ts",
+    "push:test": "tsx scripts/send-test-push.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

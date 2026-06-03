@@ -1,11 +1,17 @@
-import { ActiveAlertResponseSchema } from "@protecther/contracts";
+import {
+  ActiveAlertResponseSchema,
+  StartAlertRequestSchema,
+  StartAlertResponseSchema,
+} from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import * as Notifications from "expo-notifications";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, Vibration, View } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { GlassCard } from "../components/GlassCard";
+import { formatApiError } from "../lib/apiError";
 import { useEspButtonBle } from "../hooks/useEspButtonBle";
 import type { AppStackParamList } from "../navigation/types";
 import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
@@ -15,6 +21,8 @@ type Props = NativeStackScreenProps<AppStackParamList, "Home">;
 export function HomeScreen({ navigation }: Props) {
   const { state, signOut, getAccessToken } = useAuth();
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null);
+  const [sosLoading, setSosLoading] = useState(false);
+  const [sosError, setSosError] = useState<string | null>(null);
 
   // Pulsing animation for the SOS button
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -61,6 +69,49 @@ export function HomeScreen({ navigation }: Props) {
       void refreshActive();
     }, [refreshActive]),
   );
+
+  const triggerSosAlert = useCallback(async () => {
+    if (sosLoading) return;
+    setSosError(null);
+    const parsed = StartAlertRequestSchema.safeParse({ mode: "visible" });
+    if (!parsed.success) return;
+    setSosLoading(true);
+    try {
+      const result = await apiFetchJson<unknown>("/alerts/start", {
+        method: "POST",
+        body: JSON.stringify(parsed.data),
+        accessToken: getAccessToken(),
+      });
+      if (!result.ok) {
+        setSosError(formatApiError(result.body));
+        return;
+      }
+      const body = StartAlertResponseSchema.safeParse(result.data);
+      if (!body.success) {
+        setSosError("Resposta inválida da API");
+        return;
+      }
+      Vibration.vibrate([0, 300, 100, 300, 100, 300]);
+      try {
+        const perms = await Notifications.getPermissionsAsync();
+        if (!perms.granted) await Notifications.requestPermissionsAsync();
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "🚨 Alerta de Perigo Ativo",
+            body: "Alerta visível iniciado. Seus contatos estão sendo notificados.",
+            sound: true,
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+          },
+          trigger: null,
+        });
+      } catch {
+        /* notificação pode falhar em ambiente sem suporte */
+      }
+      navigation.navigate("ActiveAlert", { alertId: body.data.alert.id });
+    } finally {
+      setSosLoading(false);
+    }
+  }, [sosLoading, getAccessToken, navigation]);
 
   if (state.status !== "authenticated") {
     return null;
@@ -124,19 +175,23 @@ export function HomeScreen({ navigation }: Props) {
         >
           <View style={styles.sosGlowRing}>
             <Pressable
-              onPress={() => navigation.navigate("Sos")}
+              onPress={() => void triggerSosAlert()}
+              disabled={sosLoading}
               style={({ pressed }) => [
                 styles.sosButton,
-                pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
+                (pressed || sosLoading) && { opacity: 0.8, transform: [{ scale: 0.95 }] },
               ]}
             >
-              <Text style={styles.sosText}>SOS</Text>
+              <Text style={styles.sosText}>{sosLoading ? "..." : "SOS"}</Text>
             </Pressable>
           </View>
         </Animated.View>
         <Text style={styles.sosHint}>
           Seus contatos serão notificados instantaneamente
         </Text>
+        {sosError ? (
+          <Text style={styles.sosErrorText}>{sosError}</Text>
+        ) : null}
         <View style={styles.bleStatusCard}>
           <Text style={styles.bleStatusLabel}>Status BLE do ESP32</Text>
           <Text
@@ -315,6 +370,12 @@ const styles = StyleSheet.create({
   },
   bleStatusError: {
     color: Colors.danger,
+  },
+  sosErrorText: {
+    ...Typography.small,
+    color: Colors.danger,
+    textAlign: "center",
+    maxWidth: 280,
   },
   quickActions: {
     flexDirection: "row",

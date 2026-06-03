@@ -65,6 +65,13 @@ corepack pnpm --filter protecther-api db:generate
 corepack pnpm --filter protecther-api db:migrate
 ```
 
+Se `db:migrate` falhar com `type "contact_status" already exists`, o schema já está no Postgres mas o journal do Drizzle está vazio (comum após `db:push`). Sincronize uma vez:
+
+```bash
+corepack pnpm --filter protecther-api db:baseline
+corepack pnpm --filter protecther-api db:migrate
+```
+
 ### 4. Executar o Projeto
 
 #### Modo Desenvolvimento (API + Mobile juntos):
@@ -119,6 +126,20 @@ cp apps/mobile/.env.example apps/mobile/.env
 
 - **Android Emulator:** Use http://10.0.2.2:3000
 - **Dispositivo físico:** Use o IP da sua máquina na rede (ex: http://192.168.1.100:3000)
+
+### Push para contatos de emergência
+
+O app usa `expo-notifications` (token nativo FCM no Android). Quando a titular dispara o SOS, a API envia push para contatos **ativos** que tenham token em `device_push_tokens`.
+
+| Passo | O que fazer |
+|-------|-------------|
+| API | `FIREBASE_SERVICE_ACCOUNT_JSON` no `apps/api/.env` (service account do projeto Firebase) |
+| Dev local | `PUSH_USE_FCM_IN_DEV=true` — sem isso, em `development` a API só loga e **nenhuma notificação chega no celular** |
+| App do contato | Dev client (`start:dev` + build nativo); **Expo Go não registra push** neste projeto |
+| Contato | Aceitar convite, logar, permitir notificações; no console: `[telemetry] push_token_registered` |
+| Android | Emulador com Google Play + `google-services.json` no build (`expo run:android`) |
+
+Detalhes: `docs/RUN.md` (Sprint 3.1).
 
 ---
 
