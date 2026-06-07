@@ -5,11 +5,11 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Pressable,
   ScrollView,
@@ -23,7 +23,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
-import { logMobileTelemetry } from "../lib/telemetry";
 import { ACTIVE_ALERT_ID_STORAGE_KEY } from "../location/locationTaskNames";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Shadow, Spacing } from "../theme";
@@ -47,7 +46,6 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [bgHint, setBgHint] = useState<string | null>(null);
 
   // Pulsing indicator animation (smooth)
   const pulseOpacity = useRef(new Animated.Value(0.35)).current;
@@ -122,26 +120,6 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
     }, [loadActive]),
   );
 
-  const requestBackgroundLocation = async () => {
-    setBgHint(null);
-    const fg = await Location.requestForegroundPermissionsAsync();
-    if (fg.status !== "granted") {
-      setBgHint("Permissão de localização negada.");
-      logMobileTelemetry("location_stream_failed", {
-        reason: "permission_denied",
-      });
-      return;
-    }
-    const bg = await Location.requestBackgroundPermissionsAsync();
-    if (bg.status !== "granted") {
-      setBgHint(
-        'Sem permissão "Sempre". Ative em Ajustes > ProtectHer > Localização para rastreio em segundo plano.',
-      );
-      return;
-    }
-    setBgHint("✅ Localização em segundo plano ativada!");
-  };
-
   const cancel = async () => {
     setError(null);
     setLoading(true);
@@ -166,10 +144,25 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
         return;
       }
       await AsyncStorage.removeItem(ACTIVE_ALERT_ID_STORAGE_KEY);
-      navigation.replace("Sos");
+      navigation.replace("Home");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelPress = () => {
+    Alert.alert(
+      "Cancelar alerta",
+      "Tem certeza que deseja encerrar o alerta?",
+      [
+        { text: "Não", style: "cancel" },
+        {
+          text: "Sim, encerrar",
+          style: "destructive",
+          onPress: () => void cancel(),
+        },
+      ],
+    );
   };
 
   const elapsed = alertData
@@ -244,35 +237,6 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
         )}
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Rastreamento de localizacao</Text>
-          <Text style={styles.sectionDesc}>
-            Sua localizacao esta sendo enviada automaticamente para seus
-            contatos de emergencia em tempo real.
-          </Text>
-          <Pressable
-            onPress={() => void requestBackgroundLocation()}
-            style={({ pressed }) => [
-              styles.outlineButton,
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <Text style={styles.outlineButtonText}>Permitir segundo plano</Text>
-          </Pressable>
-          {bgHint ? (
-            <Text
-              style={[
-                styles.hint,
-                bgHint.startsWith("✅")
-                  ? { color: "#368A4A" }
-                  : { color: "#B12E58" },
-              ]}
-            >
-              {bgHint}
-            </Text>
-          ) : null}
-        </View>
-
-        <View style={styles.sectionCard}>
           <Text style={styles.cancelTitle}>Estou segura</Text>
           <Text style={styles.cancelDesc}>
             PIN opcional. Se preenchido, o sistema entende que voce esta sob
@@ -289,7 +253,7 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
             style={styles.input}
           />
           <Pressable
-            onPress={() => void cancel()}
+            onPress={handleCancelPress}
             disabled={loading}
             style={({ pressed }) => [
               styles.cancelButton,
@@ -419,39 +383,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 8,
-  },
-  sectionTitle: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 16,
-    color: "#55383E",
-  },
-  sectionDesc: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 13,
-    lineHeight: 18,
-    color: "#6A5157",
-  },
-  outlineButton: {
-    minHeight: 40,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: "#DA8295",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginTop: 2,
-  },
-  outlineButtonText: {
-    fontFamily: "Poppins_500Medium",
-    fontSize: 14,
-    color: "#DA8295",
-  },
-  hint: {
-    fontFamily: "Poppins_500Medium",
-    marginTop: 2,
-    fontSize: 12,
   },
   cancelTitle: {
     fontFamily: "Poppins_600SemiBold",

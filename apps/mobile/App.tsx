@@ -12,6 +12,7 @@ import { AuthProvider } from "./src/auth/AuthContext";
 import { EmergencyContactsSync } from "./src/emergency/EmergencyContactsSync";
 import { PushTokenSync } from "./src/devices/PushTokenSync";
 import { ActiveAlertLocationSync } from "./src/location/activeAlertLocationSync";
+import { LocationPermissionSync } from "./src/location/LocationPermissionSync";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <EspButtonBleProvider>
+          <LocationPermissionSync />
           <ActiveAlertLocationSync />
           <EmergencyContactsSync />
           <PushTokenSync />
