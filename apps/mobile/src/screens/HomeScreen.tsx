@@ -1,18 +1,21 @@
-import {
-  ActiveAlertResponseSchema,
-  StartAlertRequestSchema,
-  StartAlertResponseSchema,
-} from "@protecther/contracts";
+import { ActiveAlertResponseSchema } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import * as Notifications from "expo-notifications";
+import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Pressable, StyleSheet, Text, Vibration, View } from "react-native";
+import {
+  Animated,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { GlassCard } from "../components/GlassCard";
-import { formatApiError } from "../lib/apiError";
-import { useEspButtonBleState } from "../ble/EspButtonBleContext";
+import { useEspButtonBle } from "../hooks/useEspButtonBle";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Shadow, Spacing } from "../theme";
 
@@ -23,16 +26,11 @@ export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { state, signOut, getAccessToken } = useAuth();
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null);
-<<<<<<< HEAD
-  const [sosLoading, setSosLoading] = useState(false);
-  const [sosError, setSosError] = useState<string | null>(null);
-=======
   const isSmallScreen = height < 700 || width < 360;
   const isVeryNarrow = width < 350;
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const outerSize = isSmallScreen ? 178 : 198;
   const innerSize = isSmallScreen ? 148 : 168;
->>>>>>> Front-app
 
   // Pulsing animation for the SOS button
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -80,49 +78,6 @@ export function HomeScreen({ navigation }: Props) {
     }, [refreshActive]),
   );
 
-  const triggerSosAlert = useCallback(async () => {
-    if (sosLoading) return;
-    setSosError(null);
-    const parsed = StartAlertRequestSchema.safeParse({ mode: "visible" });
-    if (!parsed.success) return;
-    setSosLoading(true);
-    try {
-      const result = await apiFetchJson<unknown>("/alerts/start", {
-        method: "POST",
-        body: JSON.stringify(parsed.data),
-        accessToken: getAccessToken(),
-      });
-      if (!result.ok) {
-        setSosError(formatApiError(result.body));
-        return;
-      }
-      const body = StartAlertResponseSchema.safeParse(result.data);
-      if (!body.success) {
-        setSosError("Resposta inválida da API");
-        return;
-      }
-      Vibration.vibrate([0, 300, 100, 300, 100, 300]);
-      try {
-        const perms = await Notifications.getPermissionsAsync();
-        if (!perms.granted) await Notifications.requestPermissionsAsync();
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "🚨 Alerta de Perigo Ativo",
-            body: "Alerta visível iniciado. Seus contatos estão sendo notificados.",
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.HIGH,
-          },
-          trigger: null,
-        });
-      } catch {
-        /* notificação pode falhar em ambiente sem suporte */
-      }
-      navigation.navigate("ActiveAlert", { alertId: body.data.alert.id });
-    } finally {
-      setSosLoading(false);
-    }
-  }, [sosLoading, getAccessToken, navigation]);
-
   if (state.status !== "authenticated") {
     return null;
   }
@@ -134,7 +89,16 @@ export function HomeScreen({ navigation }: Props) {
     status: bleStatus,
     isConnected: bleConnected,
     error: bleError,
-  } = useEspButtonBleState();
+  } = useEspButtonBle({
+    getAccessToken,
+    onAlertTriggered: (alertId: string) => {
+      navigation.navigate("ActiveAlert", { alertId });
+    },
+    onButtonPress: () => {
+      console.log("Fallback: navegando para tela SOS...");
+      navigation.navigate("Sos");
+    },
+  });
 
   const bleStatusText =
     bleError ?? (bleConnected ? "Dispositivo conectado" : bleStatus);
@@ -167,58 +131,6 @@ export function HomeScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-<<<<<<< HEAD
-      {/* Active Alert Banner */}
-      {activeAlertId ? (
-        <Pressable
-          onPress={() =>
-            navigation.navigate("ActiveAlert", { alertId: activeAlertId })
-          }
-        >
-          <GlassCard variant="danger" style={styles.alertBanner}>
-            <View style={styles.alertDot} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.alertBannerTitle}>Alerta ativo</Text>
-              <Text style={styles.alertBannerSub}>
-                Toque para ver detalhes →
-              </Text>
-            </View>
-          </GlassCard>
-        </Pressable>
-      ) : null}
-
-      {/* SOS Button — center of screen */}
-      <View style={styles.sosSection}>
-        <Text style={styles.sosLabel}>Emergência? Pressione o botão</Text>
-        <Animated.View
-          style={[styles.sosOuter, { transform: [{ scale: pulseAnim }] }]}
-        >
-          <View style={styles.sosGlowRing}>
-            <Pressable
-              onPress={() => void triggerSosAlert()}
-              disabled={sosLoading}
-              style={({ pressed }) => [
-                styles.sosButton,
-                (pressed || sosLoading) && { opacity: 0.8, transform: [{ scale: 0.95 }] },
-              ]}
-            >
-              <Text style={styles.sosText}>{sosLoading ? "..." : "SOS"}</Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-        <Text style={styles.sosHint}>
-          Seus contatos serão notificados instantaneamente
-        </Text>
-        {sosError ? (
-          <Text style={styles.sosErrorText}>{sosError}</Text>
-        ) : null}
-        <View style={styles.bleStatusCard}>
-          <Text style={styles.bleStatusLabel}>Status BLE do ESP32</Text>
-          <Text
-            style={[
-              styles.bleStatusText,
-              bleError ? styles.bleStatusError : null,
-=======
         <View style={styles.userBlock}>
           <Text style={styles.greeting}>Olá, {firstName}</Text>
           <Text style={styles.email}>{user.email}</Text>
@@ -227,7 +139,6 @@ export function HomeScreen({ navigation }: Props) {
             style={({ pressed }) => [
               styles.startAlertBtn,
               pressed && styles.buttonPressed,
->>>>>>> Front-app
             ]}
           >
             <Text style={styles.startAlertBtnText}>Iniciar alerta</Text>
@@ -494,12 +405,6 @@ const styles = StyleSheet.create({
   },
   bleStatusError: {
     color: "#B12E58",
-  },
-  sosErrorText: {
-    ...Typography.small,
-    color: Colors.danger,
-    textAlign: "center",
-    maxWidth: 280,
   },
   quickActions: {
     flexDirection: "row",

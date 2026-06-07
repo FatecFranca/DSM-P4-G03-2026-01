@@ -19,9 +19,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { ensureAndroidAlertsChannel } from "../notifications/androidAlertsChannel";
-import { AppButton } from "../components/AppButton";
-import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Shadow, Spacing } from "../theme";
@@ -40,13 +37,20 @@ export function SosScreen({ navigation }: Props) {
   useEffect(() => {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
+        shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
         shouldShowBanner: true,
         shouldShowList: true,
       }),
     });
-    void ensureAndroidAlertsChannel(Notifications).catch(() => {});
+    Notifications.setNotificationChannelAsync("alert", {
+      name: "Alertas de Perigo",
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: "default",
+      vibrationPattern: [0, 300, 100, 300, 100, 300],
+      enableVibrate: true,
+    }).catch(() => {});
   }, []);
 
   const startAlert = async (mode: "visible" | "discreet") => {
@@ -82,7 +86,7 @@ export function SosScreen({ navigation }: Props) {
           content: {
             title: "🚨 Alerta de Perigo Ativo",
             body: `Alerta ${mode === "visible" ? "visível" : "discreto"} iniciado. Seus contatos estão sendo notificados.`,
-            sound: true,
+            sound: "default",
             priority: Notifications.AndroidNotificationPriority.HIGH,
           },
           trigger: null,

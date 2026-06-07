@@ -1,22 +1,28 @@
 import {
+  AcceptInviteResponseSchema,
   CreateInviteRequestSchema,
   CreateInviteResponseSchema,
   ListContactsResponseSchema,
 } from "@protecther/contracts";
-import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
-<<<<<<< HEAD
-import { Colors, Spacing, Typography } from "../theme";
-=======
 import { Radius, Spacing } from "../theme";
->>>>>>> Front-app
 
 type ContactItem = {
   id: string;
@@ -27,8 +33,6 @@ type ContactItem = {
 
 type Props = NativeStackScreenProps<AppStackParamList, "Contacts">;
 
-const CONTACTS_POLL_MS = 10_000;
-
 export function ContactsScreen(_props: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -36,79 +40,55 @@ export function ContactsScreen(_props: Props) {
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const { getAccessToken } = useAuth();
   const [targetEmail, setTargetEmail] = useState("");
+  const [inviteToken, setInviteToken] = useState("");
+  const [devToken, setDevToken] = useState<string | null>(null);
   const [asOwner, setAsOwner] = useState<ContactItem[]>([]);
   const [asContact, setAsContact] = useState<ContactItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshList = useCallback(
-    async (options?: { silent?: boolean }) => {
-      if (!options?.silent) {
-        setError(null);
-        setMessage(null);
-      }
-      setRefreshing(true);
-      try {
-        const token = getAccessToken();
-        const result = await apiFetchJson<unknown>("/emergency/contacts", {
-          method: "GET",
-          accessToken: token,
-        });
-        if (!result.ok) {
-          if (!options?.silent) {
-            setError(formatApiError(result.body));
-          }
-          return;
-        }
-        const parsed = ListContactsResponseSchema.safeParse(result.data);
-        if (!parsed.success) {
-          if (!options?.silent) {
-            setError("Lista inválida da API");
-          }
-          return;
-        }
-        setAsOwner(
-          parsed.data.asOwner.map((r) => ({
-            id: r.id,
-            name: r.contact.name,
-            email: r.contact.email,
-            since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
-          })),
-        );
-        setAsContact(
-          parsed.data.asContact.map((r) => ({
-            id: r.id,
-            name: r.owner.name,
-            email: r.owner.email,
-            since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
-          })),
-        );
-        setLoaded(true);
-      } finally {
-        setRefreshing(false);
-      }
-    },
-    [getAccessToken],
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      void refreshList();
-      const timer = setInterval(() => {
-        void refreshList({ silent: true });
-      }, CONTACTS_POLL_MS);
-      return () => {
-        clearInterval(timer);
-      };
-    }, [refreshList]),
-  );
+  const refreshList = useCallback(async () => {
+    setError(null);
+    setMessage(null);
+    const token = getAccessToken();
+    const result = await apiFetchJson<unknown>("/emergency/contacts", {
+      method: "GET",
+      accessToken: token,
+    });
+    if (!result.ok) {
+      setError(formatApiError(result.body));
+      return;
+    }
+    const parsed = ListContactsResponseSchema.safeParse(result.data);
+    if (!parsed.success) {
+      setError("Lista inválida da API");
+      return;
+    }
+    setAsOwner(
+      parsed.data.asOwner.map((r) => ({
+        id: r.id,
+        name: r.contact.name,
+        email: r.contact.email,
+        since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
+      })),
+    );
+    setAsContact(
+      parsed.data.asContact.map((r) => ({
+        id: r.id,
+        name: r.owner.name,
+        email: r.owner.email,
+        since: new Date(r.createdAt).toLocaleDateString("pt-BR"),
+      })),
+    );
+    setLoaded(true);
+  }, [getAccessToken]);
 
   const createInvite = async () => {
     setError(null);
     setMessage(null);
+    setDevToken(null);
     const parsed = CreateInviteRequestSchema.safeParse({ targetEmail });
     if (!parsed.success) {
       setError(parsed.error.message);
@@ -130,59 +110,37 @@ export function ContactsScreen(_props: Props) {
         setError("Resposta de convite inválida");
         return;
       }
-<<<<<<< HEAD
-      setMessage(
-        body.data.linkedImmediately
-          ? "✅ Contato adicionado! Ele já aparece na lista."
-          : "✅ Convite enviado! Quando abrir o app com este e-mail, o vínculo será ativado automaticamente.",
-      );
-=======
       if (body.data.devInvitationToken) {
         setDevToken(body.data.devInvitationToken);
       }
       setMessage("Convite enviado com sucesso!");
->>>>>>> Front-app
       setTargetEmail("");
-      await refreshList({ silent: true });
+      await refreshList();
     } finally {
       setLoading(false);
     }
   };
 
-  const confirmRemove = (item: ContactItem, role: "owner" | "contact") => {
-    const label =
-      role === "owner"
-        ? `Remover ${item.name} dos seus contatos?`
-        : `Deixar de ser contato de ${item.name}?`;
-
-    Alert.alert("Remover vínculo", label, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Remover",
-        style: "destructive",
-        onPress: () => void removeContact(item.id),
-      },
-    ]);
-  };
-
-  const removeContact = async (linkId: string) => {
+  const acceptInvite = async () => {
     setError(null);
     setMessage(null);
+    const token = inviteToken.trim();
+    if (token.length < 16) {
+      setError("Cole o token do convite");
+      return;
+    }
     setLoading(true);
     try {
-      const path = `/emergency/contacts/${encodeURIComponent(linkId)}`;
+      const path = `/emergency/invites/${encodeURIComponent(token)}/accept`;
       const result = await apiFetchJson<unknown>(path, {
-        method: "DELETE",
+        method: "POST",
+        body: JSON.stringify({}),
         accessToken: getAccessToken(),
       });
       if (!result.ok) {
         setError(formatApiError(result.body));
         return;
       }
-<<<<<<< HEAD
-      setMessage("Vínculo removido.");
-      await refreshList({ silent: true });
-=======
       const body = AcceptInviteResponseSchema.safeParse(result.data);
       if (!body.success) {
         setError("Resposta de aceite inválida");
@@ -191,7 +149,6 @@ export function ContactsScreen(_props: Props) {
       setMessage(`Vínculo ativo com ${body.data.link.owner.name}!`);
       setInviteToken("");
       await refreshList();
->>>>>>> Front-app
     } finally {
       setLoading(false);
     }
@@ -218,116 +175,6 @@ export function ContactsScreen(_props: Props) {
   };
 
   return (
-<<<<<<< HEAD
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Contatos de Emergência</Text>
-        {refreshing ? (
-          <Text style={styles.refreshHint}>Atualizando…</Text>
-        ) : null}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>👤 Meus contatos</Text>
-        <Text style={styles.sectionDesc}>
-          Pessoas que você adicionou como contato de emergência
-        </Text>
-        {!loaded ? (
-          <Text style={styles.muted}>Carregando…</Text>
-        ) : asOwner.length === 0 ? (
-          <Text style={styles.muted}>Nenhum contato adicionado ainda</Text>
-        ) : (
-          asOwner.map((c, i) => (
-            <GlassCard key={c.id} style={styles.contactCard}>
-              <Avatar
-                name={c.name}
-                color={avatarColors[i % avatarColors.length]}
-              />
-              <View style={styles.contactInfo}>
-                <Text style={styles.contactName}>{c.name}</Text>
-                <Text style={styles.contactEmail}>{c.email}</Text>
-                <Text style={styles.contactSince}>Desde {c.since}</Text>
-              </View>
-              <View style={styles.contactActions}>
-                <Badge label="Ativo" variant="safe" />
-                <AppButton
-                  title="Remover"
-                  variant="outline"
-                  onPress={() => confirmRemove(c, "owner")}
-                  small
-                  style={styles.removeBtn}
-                />
-              </View>
-            </GlassCard>
-          ))
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🤝 Sou contato de</Text>
-        <Text style={styles.sectionDesc}>
-          Titulares que você protege (vínculo automático ao abrir o app)
-        </Text>
-        {!loaded ? null : asContact.length === 0 ? (
-          <Text style={styles.muted}>Nenhum vínculo como contato</Text>
-        ) : (
-          asContact.map((c, i) => (
-            <GlassCard key={c.id} style={styles.contactCard}>
-              <Avatar
-                name={c.name}
-                color={avatarColors[(i + 3) % avatarColors.length]}
-              />
-              <View style={styles.contactInfo}>
-                <Text style={styles.contactName}>{c.name}</Text>
-                <Text style={styles.contactEmail}>{c.email}</Text>
-                <Text style={styles.contactSince}>Desde {c.since}</Text>
-              </View>
-              <View style={styles.contactActions}>
-                <Badge label="Ativo" variant="safe" />
-                <AppButton
-                  title="Remover"
-                  variant="outline"
-                  onPress={() => confirmRemove(c, "contact")}
-                  small
-                  style={styles.removeBtn}
-                />
-              </View>
-            </GlassCard>
-          ))
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>✉️ Adicionar contato</Text>
-        <Text style={styles.sectionDesc}>
-          Informe o e-mail da pessoa. Se ela já usa o app, o vínculo é imediato;
-          caso contrário, ativa sozinha no primeiro acesso com esse e-mail.
-        </Text>
-        <AppInput
-          label="E-mail do contato"
-          placeholder="email@contato.com"
-          value={targetEmail}
-          onChangeText={setTargetEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        <AppButton
-          title="Adicionar"
-          onPress={() => void createInvite()}
-          loading={loading}
-          small
-          style={{ marginTop: Spacing.sm }}
-        />
-      </View>
-
-      {message ? <Text style={styles.success}>{message}</Text> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </ScrollView>
-=======
     <View style={styles.flex}>
       <LinearGradient
         colors={["rgba(255,255,255,0.2)", "rgba(199,22,87,0.2)"]}
@@ -463,7 +310,6 @@ export function ContactsScreen(_props: Props) {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
     </View>
->>>>>>> Front-app
   );
 }
 
@@ -482,22 +328,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: 16,
   },
-<<<<<<< HEAD
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: Spacing.sm,
-  },
-  title: {
-    ...Typography.h1,
-    color: Colors.textPrimary,
-    flex: 1,
-  },
-  refreshHint: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-=======
   brand: {
     fontFamily: "Italianno_400Regular",
     fontSize: 36,
@@ -533,7 +363,6 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_500Medium",
     fontSize: 16,
     color: "#DA8295",
->>>>>>> Front-app
   },
   section: {
     gap: 8,
@@ -606,14 +435,6 @@ const styles = StyleSheet.create({
     color: "#7A5A60",
     marginTop: 2,
   },
-<<<<<<< HEAD
-  contactActions: {
-    alignItems: "flex-end",
-    gap: Spacing.xs,
-  },
-  removeBtn: {
-    minWidth: 88,
-=======
   devBox: {
     backgroundColor: "rgba(255,221,225,0.8)",
     borderRadius: Radius.md,
@@ -631,7 +452,6 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_400Regular",
     fontSize: 11,
     color: "#55383E",
->>>>>>> Front-app
   },
   success: {
     fontFamily: "Poppins_400Regular",
