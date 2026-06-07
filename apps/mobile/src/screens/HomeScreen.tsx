@@ -1,22 +1,27 @@
-import { ActiveAlertResponseSchema } from "@protecther/contracts";
+import { ActiveAlertResponseSchema, StartAlertRequestSchema, StartAlertResponseSchema } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Notifications from "expo-notifications";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
+  Vibration,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useEspButtonBleState } from "../ble/EspButtonBleContext";
+import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
+import { ensureAndroidAlertsChannel } from "../notifications/androidAlertsChannel";
 import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Home">;
@@ -26,6 +31,8 @@ export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { state, signOut, getAccessToken } = useAuth();
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sosError, setSosError] = useState<string | null>(null);
   const isSmallScreen = height < 700 || width < 360;
   const isVeryNarrow = width < 350;
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
@@ -77,6 +84,69 @@ export function HomeScreen({ navigation }: Props) {
     }, [refreshActive]),
   );
 
+  useEffect(() => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    void ensureAndroidAlertsChannel(Notifications).catch(() => {});
+  }, []);
+
+  const startAlert = useCallback(async () => {
+    if (activeAlertId) {
+      navigation.navigate("ActiveAlert", { alertId: activeAlertId });
+      return;
+    }
+    setSosError(null);
+    const parsed = StartAlertRequestSchema.safeParse({ mode: "visible" });
+    if (!parsed.success) {
+      setSosError(parsed.error.message);
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await apiFetchJson<unknown>("/alerts/start", {
+        method: "POST",
+        body: JSON.stringify(parsed.data),
+        accessToken: getAccessToken(),
+      });
+      if (!result.ok) {
+        setSosError(formatApiError(result.body));
+        return;
+      }
+      const body = StartAlertResponseSchema.safeParse(result.data);
+      if (!body.success) {
+        setSosError("Resposta inválida da API");
+        return;
+      }
+      Vibration.vibrate([0, 300, 100, 300, 100, 300]);
+      try {
+        const perms = await Notifications.getPermissionsAsync();
+        if (!perms.granted) {
+          await Notifications.requestPermissionsAsync();
+        }
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "🚨 Alerta de Perigo Ativo",
+            body: "Alerta visível iniciado. Seus contatos estão sendo notificados.",
+            sound: true,
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+          },
+          trigger: null,
+        });
+      } catch {
+        /* notificação pode falhar em ambiente sem suporte */
+      }
+      navigation.navigate("ActiveAlert", { alertId: body.data.alert.id });
+    } finally {
+      setLoading(false);
+    }
+  }, [activeAlertId, getAccessToken, navigation]);
+
   if (state.status !== "authenticated") {
     return null;
   }
@@ -126,7 +196,8 @@ export function HomeScreen({ navigation }: Props) {
           <Text style={styles.greeting}>Olá, {firstName}</Text>
           <Text style={styles.email}>{user.email}</Text>
           <Pressable
-            onPress={() => navigation.navigate("Sos")}
+            onPress={() => void startAlert()}
+            disabled={loading}
             style={({ pressed }) => [
               styles.startAlertBtn,
               pressed && styles.buttonPressed,
@@ -168,7 +239,8 @@ export function HomeScreen({ navigation }: Props) {
               style={styles.sosGradientRing}
             >
               <Pressable
-                onPress={() => navigation.navigate("Sos")}
+                onPress={() => void startAlert()}
+                disabled={loading}
                 style={({ pressed }) => [
                   styles.sosButton,
                   {
@@ -176,10 +248,14 @@ export function HomeScreen({ navigation }: Props) {
                     height: innerSize,
                     borderRadius: innerSize / 2,
                   },
-                  pressed && styles.buttonPressed,
+                  (pressed || loading) && styles.buttonPressed,
                 ]}
               >
-                <Text style={styles.sosText}>S O S</Text>
+                {loading ? (
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.sosText}>S O S</Text>
+                )}
               </Pressable>
             </LinearGradient>
           </Animated.View>
@@ -187,6 +263,8 @@ export function HomeScreen({ navigation }: Props) {
           <Text style={styles.sosHint}>
             Seus contatos serão notificados{"\n"}instantaneamente
           </Text>
+
+          {sosError ? <Text style={styles.sosError}>{sosError}</Text> : null}
 
           <View style={styles.bleStatusCard}>
             <Text
@@ -396,6 +474,13 @@ const styles = StyleSheet.create({
   },
   bleStatusError: {
     color: "#B12E58",
+  },
+  sosError: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    color: "#B12E58",
+    textAlign: "center",
+    marginTop: -6,
   },
   quickActions: {
     flexDirection: "row",

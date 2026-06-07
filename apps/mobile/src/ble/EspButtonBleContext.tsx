@@ -29,11 +29,6 @@ export function EspButtonBleProvider({ children }: { children: ReactNode }) {
         navigationRef.navigate("ActiveAlert", { alertId });
       }
     },
-    onButtonPress: () => {
-      if (navigationRef.isReady()) {
-        navigationRef.navigate("Sos");
-      }
-    },
   });
 
   return (
