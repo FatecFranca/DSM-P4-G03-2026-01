@@ -1,34 +1,30 @@
 import {
-  BleDevicePublicSchema,
   ListBleDevicesResponseSchema,
   RegisterBleDeviceRequestSchema,
   RegisterBleDeviceResponseSchema,
-  UnregisterBleDeviceResponseSchema,
 } from "@protecther/contracts";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { AppButton } from "../components/AppButton";
-import { GlassCard } from "../components/GlassCard";
 import { useEspDeviceStorage } from "../hooks/useEspDeviceStorage";
-import type { AppStackParamList } from "../navigation/types";
 import {
   CHARACTERISTIC_UUID,
   DEVICE_NAME,
   SERVICE_UUID,
 } from "../services/ble/espBle";
-import { Colors, Radius, Spacing, Typography } from "../theme";
-
-type Props = NativeStackScreenProps<AppStackParamList, "DeviceManagement">;
+import { Radius, Shadow, Spacing } from "../theme";
 
 type BleDevice = {
   id: string;
@@ -41,7 +37,11 @@ type BleDevice = {
   createdAt: string;
 };
 
-export function DeviceManagementScreen({ navigation }: Props) {
+export function DeviceManagementScreen() {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isSmallScreen = height < 700 || width < 360;
+  const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const { getAccessToken } = useAuth();
   const { savedDevice, saveDevice, clearDevice } = useEspDeviceStorage();
   const [devices, setDevices] = useState<BleDevice[]>([]);
@@ -185,8 +185,8 @@ export function DeviceManagementScreen({ navigation }: Props) {
     return new Date(dateStr).toLocaleString("pt-BR");
   };
 
-  const renderDevice = ({ item }: { item: BleDevice }) => (
-    <GlassCard style={styles.deviceCard}>
+  const renderDevice = (item: BleDevice) => (
+    <View key={item.id} style={styles.deviceCard}>
       <View style={styles.deviceHeader}>
         <View style={styles.deviceInfo}>
           <Text style={styles.deviceName}>{item.deviceName}</Text>
@@ -204,7 +204,7 @@ export function DeviceManagementScreen({ navigation }: Props) {
         </View>
       </View>
       <View style={styles.deviceDetails}>
-        <Text style={styles.detailLabel}>Última conexão:</Text>
+        <Text style={styles.detailLabel}>Ultima conexao:</Text>
         <Text style={styles.detailValue}>
           {formatDateTime(item.lastConnectedAt)}
         </Text>
@@ -213,195 +213,315 @@ export function DeviceManagementScreen({ navigation }: Props) {
         <Text style={styles.detailLabel}>Vinculado em:</Text>
         <Text style={styles.detailValue}>{formatDateTime(item.createdAt)}</Text>
       </View>
-      <AppButton
-        title="Desvincular"
-        variant="outline"
+      <Pressable
         onPress={() => void unpairDevice(item.id)}
-        style={styles.unpairButton}
-      />
-    </GlassCard>
+        style={({ pressed }) => [
+          styles.unpairButton,
+          pressed && styles.buttonPressed,
+        ]}
+      >
+        <Text style={styles.unpairButtonText}>Desvincular</Text>
+      </Pressable>
+    </View>
   );
 
   if (loading && devices.length === 0) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.primaryLight} />
+        <ActivityIndicator size="large" color="#DA8295" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Dispositivos BLE</Text>
-      <Text style={styles.subtitle}>
-        Gerencie seus dispositivos ESP32 pareados
-      </Text>
+    <View style={styles.flex}>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.2)", "rgba(199,22,87,0.2)"]}
+        style={styles.backgroundGradient}
+        pointerEvents="none"
+      />
 
-      {savedDevice ? (
-        <GlassCard variant="success" style={styles.pairedBanner}>
-          <Text style={styles.pairedIcon}>✅</Text>
-          <Text style={styles.pairedText}>Dispositivo pareado localmente</Text>
-        </GlassCard>
-      ) : (
-        <GlassCard style={styles.unpairedBanner}>
-          <Text style={styles.unpairedIcon}>📡</Text>
-          <Text style={styles.unpairedText}>Nenhum dispositivo pareado</Text>
-          <AppButton
-            title="Parear ESP32"
-            variant="primary"
-            onPress={() => void pairDevice()}
-            loading={pairing}
-            style={styles.pairButton}
-          />
-        </GlassCard>
-      )}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(12, insets.top + 6),
+            paddingBottom: Math.max(Spacing.xxxl, insets.bottom + 16),
+            width: "100%",
+            maxWidth: contentMaxWidth,
+            alignSelf: "center",
+          },
+        ]}
+      >
+        <Text style={styles.brand}>Protect Her</Text>
+        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+          Dispositivos BLE
+        </Text>
+        <Text style={styles.subtitle}>Gerencie seus dispositivos pareados</Text>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        {savedDevice ? (
+          <View style={styles.pairedBanner}>
+            <View style={styles.bannerIconCircle}>
+              <Text style={styles.bannerIcon}>✓</Text>
+            </View>
+            <Text style={styles.pairedText}>Dispositivo Pareado localmente</Text>
+          </View>
+        ) : (
+          <View style={styles.unpairedBanner}>
+            <Text style={styles.unpairedText}>Nenhum dispositivo pareado</Text>
+            <Pressable
+              onPress={() => void pairDevice()}
+              disabled={pairing}
+              style={({ pressed }) => [
+                styles.pairButton,
+                (pressed || pairing) && styles.buttonPressed,
+              ]}
+            >
+              {pairing ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.pairButtonText}>Parear dispositivo</Text>
+              )}
+            </Pressable>
+          </View>
+        )}
 
-      <Text style={styles.sectionTitle}>Dispositivos vinculados</Text>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {devices.length === 0 ? (
-        <GlassCard style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Nenhum dispositivo registrado</Text>
-        </GlassCard>
-      ) : (
-        <FlatList
-          data={devices}
-          keyExtractor={(item) => item.id}
-          renderItem={renderDevice}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+        <Text style={styles.sectionTitle}>Dispositivos vinculados</Text>
+
+        {devices.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>Nenhum dispositivo registrado</Text>
+          </View>
+        ) : (
+          <View style={styles.list}>{devices.map((item) => renderDevice(item))}</View>
+        )}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  flex: {
     flex: 1,
-    backgroundColor: Colors.bgPrimary,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 60,
-    paddingBottom: Spacing.xl,
+    backgroundColor: "#FDF2F6",
+  },
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scroll: {
+    flex: 1,
+  },
+  container: {
+    paddingHorizontal: Spacing.lg,
+    gap: 14,
+    flexGrow: 1,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.bgPrimary,
+    backgroundColor: "#FDF2F6",
   },
-  title: {
-    ...Typography.h1,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
+  brand: {
+    fontFamily: "Italianno_400Regular",
+    fontSize: 36,
+    color: "#DA8295",
+    lineHeight: 40,
+  },
+  pageTitle: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 34,
+    lineHeight: 40,
+    color: "#55383E",
+    marginTop: -4,
+    textAlign: "center",
+    alignSelf: "center",
+    width: "100%",
+  },
+  pageTitleSmall: {
+    fontSize: 28,
+    lineHeight: 34,
   },
   subtitle: {
-    ...Typography.small,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xl,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 16,
+    lineHeight: 22,
+    color: "#55383E",
+    textAlign: "center",
   },
   pairedBanner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
+    gap: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E2A2AE",
+    backgroundColor: "rgba(255,208,225,0.45)",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
-  pairedIcon: {
-    fontSize: 24,
+  bannerIconCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#D57F94",
+  },
+  bannerIcon: {
+    fontFamily: "Poppins_700Bold",
+    color: "#FFFFFF",
+    fontSize: 11,
+    lineHeight: 14,
   },
   pairedText: {
-    ...Typography.bodyBold,
-    color: Colors.safe,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 15,
+    color: "#55383E",
   },
   unpairedBanner: {
     alignItems: "center",
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  unpairedIcon: {
-    fontSize: 36,
-    marginBottom: Spacing.sm,
+    gap: 12,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E2A2AE",
+    backgroundColor: "rgba(255,208,225,0.45)",
+    paddingHorizontal: 14,
+    paddingVertical: 16,
   },
   unpairedText: {
-    ...Typography.body,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 16,
+    color: "#55383E",
   },
   pairButton: {
-    marginTop: Spacing.md,
-    width: "100%",
+    minHeight: 44,
+    borderRadius: Radius.md,
+    backgroundColor: "#C17986",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    ...Shadow.sm,
+  },
+  pairButtonText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 16,
+    color: "#FFFFFF",
   },
   error: {
-    ...Typography.caption,
-    color: Colors.textDanger,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#B12E58",
     textAlign: "center",
-    marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    ...Typography.h3,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.md,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 18,
+    lineHeight: 24,
+    color: "#55383E",
+    marginTop: 2,
   },
   list: {
-    gap: Spacing.md,
+    gap: 10,
   },
   deviceCard: {
-    marginBottom: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E2A2AE",
+    backgroundColor: "rgba(255,208,225,0.45)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   deviceHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: Spacing.sm,
+    marginBottom: 6,
   },
   deviceInfo: {
     flex: 1,
   },
   deviceName: {
-    ...Typography.bodyBold,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 14,
+    color: "#55383E",
   },
   deviceId: {
-    ...Typography.small,
-    color: Colors.textMuted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 10,
+    color: "#7C6268",
   },
   statusBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
     borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: "#8CC28E",
   },
   statusActive: {
-    backgroundColor: "rgba(46, 213, 115, 0.15)",
+    backgroundColor: "rgba(160, 214, 163, 0.45)",
   },
   statusInactive: {
-    backgroundColor: "rgba(255, 71, 87, 0.15)",
+    backgroundColor: "rgba(255, 171, 171, 0.35)",
+    borderColor: "#D88E8E",
   },
   statusText: {
-    ...Typography.small,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 11,
+    color: "#3E5D41",
   },
   deviceDetails: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
+    gap: 8,
   },
   detailLabel: {
-    ...Typography.small,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+    color: "#6A5157",
   },
   detailValue: {
-    ...Typography.small,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+    color: "#6A5157",
+    textAlign: "right",
+    flexShrink: 1,
   },
   unpairButton: {
-    marginTop: Spacing.md,
+    marginTop: 8,
+    minHeight: 40,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#6E4E57",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.35)",
+  },
+  unpairButtonText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 15,
+    color: "#6E4E57",
   },
   emptyCard: {
     alignItems: "center",
-    paddingVertical: Spacing.xl,
+    justifyContent: "center",
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E2A2AE",
+    backgroundColor: "rgba(255,208,225,0.35)",
+    minHeight: 64,
   },
   emptyText: {
-    ...Typography.body,
-    color: Colors.textMuted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 15,
+    color: "#6A5157",
+  },
+  buttonPressed: {
+    opacity: 0.85,
   },
 });

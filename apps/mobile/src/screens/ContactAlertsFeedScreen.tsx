@@ -1,6 +1,7 @@
 import { ContactsAlertFeedResponseSchema } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,19 +10,25 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { AppButton } from "../components/AppButton";
-import { Avatar } from "../components/Avatar";
-import { Badge } from "../components/Badge";
-import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
-import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
+import { Radius, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ContactAlertsFeed">;
+
+type AlertItem = {
+  ownerName: string;
+  alertId: string;
+  startedAt: string;
+  mode: string;
+  risk: string;
+};
 
 function PulsingDot() {
   const anim = useRef(new Animated.Value(0.4)).current;
@@ -49,16 +56,12 @@ function PulsingDot() {
 }
 
 export function ContactAlertsFeedScreen({ navigation }: Props) {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isSmallScreen = height < 700 || width < 360;
+  const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const { getAccessToken } = useAuth();
-  const [items, setItems] = useState<
-    {
-      ownerName: string;
-      alertId: string;
-      startedAt: string;
-      mode: string;
-      risk: string;
-    }[]
-  >([]);
+  const [items, setItems] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,10 +80,6 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
       const parsed = ContactsAlertFeedResponseSchema.safeParse(result.data);
       if (!parsed.success) {
         setError("Resposta inválida da API");
-        return;
-      }
-      if (parsed.data.items.length === 0) {
-        setItems([]);
         return;
       }
       setItems(
@@ -111,182 +110,264 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
     });
   };
 
-  const avatarColors = ["#E74C3C", "#6C3CE2", "#F39C12", "#2ECC71", "#3498DB"];
-
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>🔔 Alertas</Text>
+    <View style={styles.flex}>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.2)", "rgba(199,22,87,0.2)"]}
+        style={styles.backgroundGradient}
+        pointerEvents="none"
+      />
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(12, insets.top + 6),
+            paddingBottom: Math.max(Spacing.xxxl, insets.bottom + 16),
+            width: "100%",
+            maxWidth: contentMaxWidth,
+            alignSelf: "center",
+          },
+        ]}
+      >
+        <Text style={styles.brand}>Protect Her</Text>
+
+        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+          Alertas
+        </Text>
         <Text style={styles.subtitle}>
           Titulares sob sua proteção com alertas ativos
         </Text>
-      </View>
 
-      <AppButton
-        title="Atualizar"
-        variant="outline"
-        onPress={() => void refresh()}
-        small
-      />
+        <Pressable
+          onPress={() => void refresh()}
+          disabled={loading}
+          style={({ pressed }) => [
+            styles.updateButton,
+            (pressed || loading) && styles.buttonPressed,
+          ]}
+        >
+          {loading ? (
+            <ActivityIndicator color="#DA8295" size="small" />
+          ) : (
+            <Text style={styles.updateButtonText}>Atualizar</Text>
+          )}
+        </Pressable>
 
-      {/* Content */}
-      {loading ? (
-        <ActivityIndicator
-          color={Colors.primary}
-          style={{ marginTop: Spacing.xxl }}
-        />
-      ) : items.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>✅</Text>
-          <Text style={styles.emptyTitle}>Tudo tranquilo</Text>
-          <Text style={styles.emptyDesc}>
-            Nenhum alerta ativo das titulares vinculadas a você.
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.alertsList}>
-          {items.map((row, i) => (
-            <Pressable
-              key={row.alertId}
-              onPress={() =>
-                navigation.navigate("ContactAlertDetail", {
-                  alertId: row.alertId,
-                  ownerName: row.ownerName,
-                  startedAt: row.startedAt,
-                })
-              }
-            >
-              <GlassCard variant="danger" style={styles.alertCard}>
+        {loading && items.length === 0 ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator color="#DA8295" size="large" />
+          </View>
+        ) : items.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.checkCircle}>
+              <Text style={styles.checkMark}>✓</Text>
+            </View>
+            <Text style={styles.emptyTitle}>Tudo Tranquilo</Text>
+            <Text style={styles.emptyDesc}>
+              Nenhum alerta ativo das titulares vinculadas a você
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.alertsList}>
+            {items.map((row) => (
+              <Pressable
+                key={row.alertId}
+                onPress={() =>
+                  navigation.navigate("ContactAlertDetail", {
+                    alertId: row.alertId,
+                    ownerName: row.ownerName,
+                    startedAt: row.startedAt,
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.alertCard,
+                  pressed && styles.buttonPressed,
+                ]}
+              >
                 <View style={styles.alertCardHeader}>
-                  <Avatar
-                    name={row.ownerName}
-                    color={avatarColors[i % avatarColors.length]}
-                    size={48}
-                  />
                   <View style={styles.alertInfo}>
                     <Text style={styles.alertName}>{row.ownerName}</Text>
                     <Text style={styles.alertTime}>
                       Desde {formatTime(row.startedAt)}
                     </Text>
+                    <Text style={styles.alertMeta}>
+                      {row.mode === "visible" ? "Modo visível" : "Modo discreto"}
+                      {" · "}
+                      Risco {row.risk === "high" ? "alto" : "normal"}
+                    </Text>
                   </View>
                   <PulsingDot />
                 </View>
+                <Text style={styles.alertAction}>Ver localização em tempo real</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
-                <View style={styles.alertBadges}>
-                  <Badge
-                    label={
-                      row.mode === "visible" ? "📢 Visível" : "🤫 Discreto"
-                    }
-                    variant={row.mode === "visible" ? "danger" : "neutral"}
-                  />
-                  <Badge
-                    label={`Risco: ${row.risk === "high" ? "Alto" : "Normal"}`}
-                    variant={row.risk === "high" ? "danger" : "warning"}
-                  />
-                </View>
-
-                <View style={styles.alertAction}>
-                  <Text style={styles.alertActionText}>
-                    Ver localização em tempo real →
-                  </Text>
-                </View>
-              </GlassCard>
-            </Pressable>
-          ))}
-        </View>
-      )}
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </ScrollView>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+    backgroundColor: "#FDF2F6",
+  },
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
   scroll: {
     flex: 1,
-    backgroundColor: Colors.bgPrimary,
   },
   container: {
-    padding: Spacing.xl,
-    paddingTop: 60,
-    paddingBottom: Spacing.xxxl,
-    gap: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    gap: 14,
+    flexGrow: 1,
   },
-  header: {
-    gap: Spacing.xs,
+  brand: {
+    fontFamily: "Italianno_400Regular",
+    fontSize: 36,
+    color: "#DA8295",
+    lineHeight: 40,
   },
-  title: {
-    ...Typography.h1,
-    color: Colors.textPrimary,
+  pageTitle: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 24,
+    lineHeight: 30,
+    color: "#55383E",
+    marginTop: -4,
+    textAlign: "center",
+    alignSelf: "center",
+    width: "100%",
+  },
+  pageTitleSmall: {
+    fontSize: 21,
+    lineHeight: 27,
   },
   subtitle: {
-    ...Typography.caption,
-    color: Colors.textMuted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 16,
+    lineHeight: 22,
+    color: "#55383E",
+    textAlign: "center",
+    alignSelf: "center",
+    width: "100%",
+  },
+  updateButton: {
+    minHeight: 44,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: "#DA8295",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  updateButtonText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 16,
+    color: "#DA8295",
   },
   emptyState: {
+    flex: 1,
     alignItems: "center",
-    paddingVertical: Spacing.xxxl,
-    gap: Spacing.md,
+    justifyContent: "center",
+    paddingTop: 48,
+    paddingBottom: 48,
+    gap: 12,
   },
-  emptyIcon: {
-    fontSize: 48,
+  checkCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#DA8295",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  checkMark: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 36,
+    color: "#FFFFFF",
+    lineHeight: 40,
   },
   emptyTitle: {
-    ...Typography.h2,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 22,
+    color: "#55383E",
+    textAlign: "center",
   },
   emptyDesc: {
-    ...Typography.caption,
-    color: Colors.textMuted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 16,
+    lineHeight: 22,
+    color: "#55383E",
     textAlign: "center",
-    maxWidth: 260,
+    maxWidth: 300,
   },
   alertsList: {
-    gap: Spacing.md,
+    gap: 10,
+    marginTop: 8,
   },
   alertCard: {
-    gap: Spacing.md,
+    backgroundColor: "rgba(255,208,225,0.55)",
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E8B8C0",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
   },
   alertCardHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
+    alignItems: "flex-start",
+    gap: 10,
   },
   alertInfo: {
     flex: 1,
+    gap: 2,
   },
   alertName: {
-    ...Typography.bodyBold,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 16,
+    color: "#55383E",
   },
   alertTime: {
-    ...Typography.small,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    color: "#55383E",
+  },
+  alertMeta: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+    color: "#7A5A60",
     marginTop: 2,
   },
   pulseDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.danger,
-  },
-  alertBadges: {
-    flexDirection: "row",
-    gap: Spacing.sm,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#C71657",
+    marginTop: 6,
   },
   alertAction: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: Spacing.sm,
-  },
-  alertActionText: {
-    ...Typography.captionBold,
-    color: Colors.danger,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 14,
+    color: "#DA8295",
   },
   error: {
-    ...Typography.caption,
-    color: Colors.textDanger,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#B12E58",
     textAlign: "center",
+  },
+  buttonPressed: {
+    opacity: 0.85,
   },
 });
