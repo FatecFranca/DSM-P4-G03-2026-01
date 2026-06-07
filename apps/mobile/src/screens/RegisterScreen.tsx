@@ -127,7 +127,7 @@ export function RegisterScreen({ navigation }: Props) {
           />
           <Text style={[styles.title, responsiveStyles.title]}>Criar conta</Text>
           <Text style={[styles.subtitle, responsiveStyles.subtitle]}>
-            Cadastre-se e proteja quem voce ama
+            Cadastre-se e proteja quem você ama
           </Text>
         </View>
 

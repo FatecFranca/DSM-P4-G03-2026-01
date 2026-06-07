@@ -53,7 +53,7 @@ async function main(): Promise<void> {
     tokens.map((t) => ({
       token: t.token,
       title: "ProtectHer (teste)",
-      body: "Se você vê isto, o FCM está a chegar a este dispositivo.",
+      body: "Se você vê isto, o FCM está chegando a este dispositivo.",
       data: { kind: "test", alertId: "00000000-0000-0000-0000-000000000000" },
       androidPriority: "high" as const,
     })),

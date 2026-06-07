@@ -218,7 +218,7 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Modo</Text>
               <Text style={styles.infoValue}>
-                {alertData.mode === "visible" ? "Visivel" : "Discreto"}
+                {alertData.mode === "visible" ? "Visível" : "Discreto"}
               </Text>
             </View>
             <View style={styles.infoRow}>
@@ -233,18 +233,18 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
             </View>
           </View>
         ) : (
-          <Text style={styles.noAlert}>Alerta encerrado ou indisponivel.</Text>
+          <Text style={styles.noAlert}>Alerta encerrado ou indisponível.</Text>
         )}
 
         <View style={styles.sectionCard}>
           <Text style={styles.cancelTitle}>Estou segura</Text>
           <Text style={styles.cancelDesc}>
-            PIN opcional. Se preenchido, o sistema entende que voce esta sob
-            coacao. O alerta encerra para voce, mas o risco e elevado no
+            PIN opcional. Se preenchido, o sistema entende que você está sob
+            coação. O alerta encerra para você, mas o risco é elevado no
             sistema.
           </Text>
           <TextInput
-            placeholder="PIN de coacao (opcional)"
+            placeholder="PIN de coação (opcional)"
             placeholderTextColor="#8B7378"
             cursorColor="#DA8295"
             secureTextEntry

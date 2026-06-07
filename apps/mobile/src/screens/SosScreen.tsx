@@ -123,7 +123,7 @@ export function SosScreen({ navigation }: Props) {
             Iniciar Alerta
           </Text>
           <Text style={[styles.subtitle, isSmallScreen && styles.subtitleSmall]}>
-            Escolha o modo do alerta. Seus contatos{"\n"}de emergencia serao
+            Escolha o modo do alerta. Seus contatos{"\n"}de emergência serão
             notificados{"\n"}imediatamente
           </Text>
         </View>
@@ -131,11 +131,11 @@ export function SosScreen({ navigation }: Props) {
         <View style={styles.cards}>
           <View style={styles.modeCard}>
             <Text style={[styles.modeTitle, isSmallScreen && styles.modeTitleSmall]}>
-              Modo Visivel
+              Modo Visível
             </Text>
             <Text style={styles.modeDesc}>
               Alarme sonoro e visual para todos os seus contatos. Ideal quando
-              voce precisa chamar atencao maxima.
+              você precisa chamar atenção máxima.
             </Text>
             <Pressable
               onPress={() => void startAlert("visible")}
@@ -148,7 +148,7 @@ export function SosScreen({ navigation }: Props) {
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.modeButtonText}>Ativar visivel</Text>
+                <Text style={styles.modeButtonText}>Ativar visível</Text>
               )}
             </Pressable>
           </View>
@@ -158,8 +158,8 @@ export function SosScreen({ navigation }: Props) {
               Modo Discreto
             </Text>
             <Text style={styles.modeDesc}>
-              Notificacao silenciosa para seus contatos. Ideal quando voce nao
-              pode chamar atencao do agressor.
+              Notificação silenciosa para seus contatos. Ideal quando você não
+              pode chamar atenção do agressor.
             </Text>
             <Pressable
               onPress={() => void startAlert("discreet")}

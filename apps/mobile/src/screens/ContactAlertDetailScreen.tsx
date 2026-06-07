@@ -151,7 +151,7 @@ export function ContactAlertDetailScreen({ route }: Props) {
       >
         <Text style={styles.brand}>Protect Her</Text>
         <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
-          Localizacao em tempo real
+          Localização em tempo real
         </Text>
         <Text style={styles.pageSubtitle}>Titular: {ownerName}</Text>
         <View style={styles.alertMetaCard}>
@@ -163,7 +163,7 @@ export function ContactAlertDetailScreen({ route }: Props) {
         {loading && points.length === 0 ? (
           <View style={styles.mapPlaceholder}>
             <ActivityIndicator color="#DA8295" size="large" />
-            <Text style={styles.mapLoading}>Carregando localizacao...</Text>
+            <Text style={styles.mapLoading}>Carregando localização...</Text>
           </View>
         ) : mapHtml && last ? (
           <View
@@ -200,9 +200,9 @@ export function ContactAlertDetailScreen({ route }: Props) {
             <View style={styles.emptyIcon}>
               <Text style={styles.emptyIconText}>i</Text>
             </View>
-            <Text style={styles.pointsTitle}>Aguardando localizacao</Text>
+            <Text style={styles.pointsTitle}>Aguardando localização</Text>
             <Text style={styles.pointsEmpty}>
-              Ainda nao recebemos pontos da titular para exibir no mapa.
+              Ainda não recebemos pontos da titular para exibir no mapa.
             </Text>
           </View>
         ) : null}
