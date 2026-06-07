@@ -1,31 +1,34 @@
 import { ListAlertLocationsResponseSchema } from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Avatar } from "../components/Avatar";
-import { Badge } from "../components/Badge";
-import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
-import { Colors, Radius, Shadow, Spacing, Typography } from "../theme";
+import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ContactAlertDetail">;
 
 export function ContactAlertDetailScreen({ route }: Props) {
   const { alertId, ownerName, startedAt } = route.params;
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isSmallScreen = height < 700 || width < 360;
+  const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const { getAccessToken } = useAuth();
   const [points, setPoints] = useState<
     { id: string; lat: number; lng: number; capturedAt: string }[]
@@ -102,11 +105,6 @@ export function ContactAlertDetailScreen({ route }: Props) {
     }, [fetchIncremental]),
   );
 
-  const coords = useMemo(
-    () => points.map((p) => ({ latitude: p.lat, longitude: p.lng })),
-    [points],
-  );
-
   const last = points.length > 0 ? points[points.length - 1] : null;
 
   useEffect(() => {
@@ -130,71 +128,88 @@ export function ContactAlertDetailScreen({ route }: Props) {
   };
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      scrollEnabled={!mapTouching}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Avatar name={ownerName} size={56} color={Colors.danger} />
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerName}>{ownerName}</Text>
-          <Text style={styles.headerSub}>
+    <View style={styles.flex}>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.2)", "rgba(199,22,87,0.2)"]}
+        style={styles.backgroundGradient}
+        pointerEvents="none"
+      />
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(12, insets.top + 6),
+            paddingBottom: Math.max(Spacing.xxxl, insets.bottom + 16),
+            width: "100%",
+            maxWidth: contentMaxWidth,
+            alignSelf: "center",
+          },
+        ]}
+        scrollEnabled={!mapTouching}
+      >
+        <Text style={styles.brand}>Protect Her</Text>
+        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+          Localizacao em tempo real
+        </Text>
+        <Text style={styles.pageSubtitle}>Titular: {ownerName}</Text>
+        <View style={styles.alertMetaCard}>
+          <Text style={styles.alertMetaText}>
             Alerta desde {formatDateTime(startedAt)}
           </Text>
         </View>
-        <Badge label="Ativo" variant="danger" />
-      </View>
 
-      {/* Map via Leaflet WebView */}
-      {loading && points.length === 0 ? (
-        <View style={styles.mapPlaceholder}>
-          <ActivityIndicator color={Colors.primary} size="large" />
-          <Text style={styles.mapLoading}>Carregando localização…</Text>
-        </View>
-      ) : mapHtml && last ? (
-        <View
-          style={styles.mapContainer}
-          onTouchStart={() => setMapTouching(true)}
-          onTouchEnd={() => setMapTouching(false)}
-          onTouchCancel={() => setMapTouching(false)}
-        >
-          <WebView
-            ref={webViewRef}
-            source={{ html: mapHtml }}
-            style={styles.map}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            originWhitelist={["*"]}
-          />
-          <Pressable
-            style={styles.centerBtn}
-            onPress={() => webViewRef.current?.injectJavaScript("centerMap()")}
+        {loading && points.length === 0 ? (
+          <View style={styles.mapPlaceholder}>
+            <ActivityIndicator color="#DA8295" size="large" />
+            <Text style={styles.mapLoading}>Carregando localizacao...</Text>
+          </View>
+        ) : mapHtml && last ? (
+          <View
+            style={styles.mapContainer}
+            onTouchStart={() => setMapTouching(true)}
+            onTouchEnd={() => setMapTouching(false)}
+            onTouchCancel={() => setMapTouching(false)}
           >
-            <Text style={styles.centerBtnText}>⟐</Text>
-          </Pressable>
-          <View style={styles.mapOverlay}>
-            <Text style={styles.mapOverlayText}>
-              📍 {points.length} ponto{points.length !== 1 ? "s" : ""} ·
-              OpenStreetMap
+            <WebView
+              ref={webViewRef}
+              source={{ html: mapHtml }}
+              style={styles.map}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              originWhitelist={["*"]}
+            />
+            <Pressable
+              style={({ pressed }) => [styles.centerBtn, pressed && styles.pressed]}
+              onPress={() => webViewRef.current?.injectJavaScript("centerMap()")}
+            >
+              <Text style={styles.centerBtnText}>Centralizar</Text>
+            </Pressable>
+            <View style={styles.mapOverlay}>
+              <Text style={styles.mapOverlayText}>
+                {points.length} ponto{points.length !== 1 ? "s" : ""} capturado
+                {points.length !== 1 ? "s" : ""}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {!last ? (
+          <View style={styles.emptyCard}>
+            <View style={styles.emptyIcon}>
+              <Text style={styles.emptyIconText}>i</Text>
+            </View>
+            <Text style={styles.pointsTitle}>Aguardando localizacao</Text>
+            <Text style={styles.pointsEmpty}>
+              Ainda nao recebemos pontos da titular para exibir no mapa.
             </Text>
           </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      {/* Fallback: text points when no location yet */}
-      {!last ? (
-        <GlassCard>
-          <Text style={styles.pointsTitle}>📍 Pontos de localização</Text>
-          <Text style={styles.pointsEmpty}>
-            Aguardando pontos de localização…
-          </Text>
-        </GlassCard>
-      ) : null}
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </ScrollView>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -227,114 +242,161 @@ function generateMapHtml(lat: number, lng: number): string {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+    backgroundColor: "#FDF2F6",
+  },
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
   scroll: {
     flex: 1,
-    backgroundColor: Colors.bgPrimary,
   },
   container: {
-    padding: Spacing.xl,
-    paddingTop: 60,
-    paddingBottom: Spacing.xxxl,
-    gap: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    gap: 14,
+    flexGrow: 1,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
+  brand: {
+    fontFamily: "Italianno_400Regular",
+    fontSize: 36,
+    color: "#DA8295",
+    lineHeight: 40,
   },
-  headerInfo: {
-    flex: 1,
+  pageTitle: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 24,
+    lineHeight: 30,
+    color: "#55383E",
+    marginTop: -4,
+    textAlign: "center",
+    alignSelf: "center",
+    width: "100%",
   },
-  headerName: {
-    ...Typography.h2,
-    color: Colors.textPrimary,
+  pageTitleSmall: {
+    fontSize: 21,
+    lineHeight: 27,
   },
-  headerSub: {
-    ...Typography.small,
-    color: Colors.textSecondary,
-    marginTop: 2,
+  pageSubtitle: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#55383E",
+    textAlign: "center",
+  },
+  alertMetaCard: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E8B8C0",
+    backgroundColor: "rgba(255,208,225,0.4)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  alertMetaText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 13,
+    color: "#55383E",
+    textAlign: "center",
   },
   mapContainer: {
     borderRadius: Radius.lg,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: "#E8B8C0",
     ...Shadow.md,
   },
   map: {
-    height: Dimensions.get("window").height * 0.8,
+    height: Dimensions.get("window").height * 0.62,
   },
   mapOverlay: {
-    backgroundColor: Colors.bgSecondary,
+    backgroundColor: "#FFFFFF",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: "#E8B8C0",
   },
   mapOverlayText: {
-    ...Typography.small,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 13,
+    color: "#55383E",
+    textAlign: "center",
   },
   centerBtn: {
     position: "absolute",
-    bottom: 56,
+    bottom: 66,
     right: 12,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.white,
+    minHeight: 36,
+    borderRadius: Radius.full,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DA8295",
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 12,
     ...Shadow.md,
   },
   centerBtnText: {
-    fontSize: 22,
-    color: Colors.primary,
-    lineHeight: 24,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 12,
+    color: "#DA8295",
   },
   mapPlaceholder: {
     height: 200,
     borderRadius: Radius.lg,
-    backgroundColor: Colors.bgCard,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: "#E8B8C0",
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.md,
   },
   mapLoading: {
-    ...Typography.caption,
-    color: Colors.textMuted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#7A5A60",
+  },
+  emptyCard: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E8B8C0",
+    backgroundColor: "rgba(255,208,225,0.35)",
+    padding: 16,
+    alignItems: "center",
+    gap: 8,
+  },
+  emptyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#DA8295",
+  },
+  emptyIconText: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 18,
+    color: "#FFFFFF",
   },
   pointsTitle: {
-    ...Typography.bodyBold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 18,
+    color: "#55383E",
+    textAlign: "center",
   },
   pointsEmpty: {
-    ...Typography.caption,
-    color: Colors.textMuted,
-  },
-  pointRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  pointTime: {
-    ...Typography.small,
-    color: Colors.textSecondary,
-  },
-  pointCoords: {
-    fontFamily: "monospace",
-    fontSize: 11,
-    color: Colors.textMuted,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#55383E",
+    textAlign: "center",
   },
   error: {
-    ...Typography.caption,
-    color: Colors.textDanger,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#B12E58",
     textAlign: "center",
-    marginTop: Spacing.sm,
+  },
+  pressed: {
+    opacity: 0.85,
   },
 });

@@ -5,7 +5,18 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as Notifications from "expo-notifications";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, Vibration, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  Vibration,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { ensureAndroidAlertsChannel } from "../notifications/androidAlertsChannel";
@@ -13,11 +24,15 @@ import { AppButton } from "../components/AppButton";
 import { GlassCard } from "../components/GlassCard";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
-import { Colors, Spacing, Typography } from "../theme";
+import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Sos">;
 
 export function SosScreen({ navigation }: Props) {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isSmallScreen = height < 700 || width < 360;
+  const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const { getAccessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,109 +97,201 @@ export function SosScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerSection}>
-        <Text style={styles.icon}>🚨</Text>
-        <Text style={styles.title}>Iniciar Alerta</Text>
-        <Text style={styles.subtitle}>
-          Escolha o modo do alerta. Seus contatos de emergência serão
-          notificados imediatamente.
-        </Text>
-      </View>
+    <View style={styles.flex}>
+      <LinearGradient
+        colors={["rgba(255,255,255,0.2)", "rgba(199,22,87,0.2)"]}
+        style={styles.backgroundGradient}
+        pointerEvents="none"
+      />
 
-      {/* Mode Cards */}
-      <View style={styles.cards}>
-        <GlassCard variant="danger" style={styles.modeCard}>
-          <Text style={styles.modeIcon}>📢</Text>
-          <Text style={styles.modeTitle}>Modo Visível</Text>
-          <Text style={styles.modeDesc}>
-            Alarme sonoro e visual para todos os seus contatos. Ideal quando
-            você precisa de atenção máxima.
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: Math.max(12, insets.top + 6),
+            paddingBottom: Math.max(Spacing.xxxl, insets.bottom + 16),
+            width: "100%",
+            maxWidth: contentMaxWidth,
+            alignSelf: "center",
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.brand}>Protect Her</Text>
+
+        <View style={styles.headerSection}>
+          <Text style={[styles.title, isSmallScreen && styles.titleSmall]}>
+            Iniciar Alerta
           </Text>
-          <AppButton
-            title="Ativar visível"
-            variant="danger"
-            onPress={() => void startAlert("visible")}
-            loading={loading}
-            style={{ marginTop: Spacing.md }}
-          />
-        </GlassCard>
-
-        <GlassCard style={styles.modeCard}>
-          <Text style={styles.modeIcon}>🤫</Text>
-          <Text style={styles.modeTitle}>Modo Discreto</Text>
-          <Text style={styles.modeDesc}>
-            Notificação silenciosa para seus contatos. Ideal quando você não
-            pode chamar atenção do agressor.
+          <Text style={[styles.subtitle, isSmallScreen && styles.subtitleSmall]}>
+            Escolha o modo do alerta. Seus contatos{"\n"}de emergencia serao
+            notificados{"\n"}imediatamente
           </Text>
-          <AppButton
-            title="Ativar discreto"
-            variant="outline"
-            onPress={() => void startAlert("discreet")}
-            loading={loading}
-            style={{ marginTop: Spacing.md }}
-          />
-        </GlassCard>
-      </View>
+        </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        <View style={styles.cards}>
+          <View style={styles.modeCard}>
+            <Text style={[styles.modeTitle, isSmallScreen && styles.modeTitleSmall]}>
+              Modo Visivel
+            </Text>
+            <Text style={styles.modeDesc}>
+              Alarme sonoro e visual para todos os seus contatos. Ideal quando
+              voce precisa chamar atencao maxima.
+            </Text>
+            <Pressable
+              onPress={() => void startAlert("visible")}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.modeButton,
+                (pressed || loading) && styles.buttonPressed,
+              ]}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.modeButtonText}>Ativar visivel</Text>
+              )}
+            </Pressable>
+          </View>
+
+          <View style={styles.modeCard}>
+            <Text style={[styles.modeTitle, isSmallScreen && styles.modeTitleSmall]}>
+              Modo Discreto
+            </Text>
+            <Text style={styles.modeDesc}>
+              Notificacao silenciosa para seus contatos. Ideal quando voce nao
+              pode chamar atencao do agressor.
+            </Text>
+            <Pressable
+              onPress={() => void startAlert("discreet")}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.modeButton,
+                (pressed || loading) && styles.buttonPressed,
+              ]}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.modeButtonText}>Ativar discreto</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  flex: {
     flex: 1,
-    backgroundColor: Colors.bgPrimary,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 60,
-    paddingBottom: Spacing.xl,
+    backgroundColor: "#FDF2F6",
+  },
+  backgroundGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scroll: {
+    flex: 1,
+  },
+  container: {
+    paddingHorizontal: Spacing.lg,
+    gap: 14,
+    flexGrow: 1,
+  },
+  brand: {
+    fontFamily: "Italianno_400Regular",
+    fontSize: 36,
+    color: "#DA8295",
+    lineHeight: 40,
   },
   headerSection: {
     alignItems: "center",
-    marginBottom: Spacing.xxl,
-  },
-  icon: {
-    fontSize: 48,
-    marginBottom: Spacing.md,
+    marginTop: 2,
   },
   title: {
-    ...Typography.h1,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 38,
+    lineHeight: 44,
+    color: "#55383E",
     textAlign: "center",
+  },
+  titleSmall: {
+    fontSize: 32,
+    lineHeight: 38,
   },
   subtitle: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    lineHeight: 19,
+    color: "#55383E",
     textAlign: "center",
-    marginTop: Spacing.sm,
-    maxWidth: 280,
+    marginTop: 2,
+  },
+  subtitleSmall: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   cards: {
-    gap: Spacing.lg,
+    gap: 14,
+    marginTop: 10,
   },
   modeCard: {
     alignItems: "center",
-    gap: Spacing.sm,
-  },
-  modeIcon: {
-    fontSize: 36,
+    gap: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#E2A2AE",
+    backgroundColor: "rgba(255,208,225,0.45)",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   modeTitle: {
-    ...Typography.h3,
-    color: Colors.textPrimary,
+    fontFamily: "Poppins_500Medium",
+    fontSize: 30,
+    lineHeight: 36,
+    color: "#55383E",
+    textAlign: "center",
+  },
+  modeTitleSmall: {
+    fontSize: 24,
+    lineHeight: 30,
   },
   modeDesc: {
-    ...Typography.small,
-    color: Colors.textSecondary,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#55383E",
     textAlign: "center",
-    lineHeight: 18,
+    maxWidth: 310,
+  },
+  modeButton: {
+    minHeight: 44,
+    borderRadius: Radius.md,
+    backgroundColor: "#C17986",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    marginTop: 2,
+    ...Shadow.sm,
+  },
+  modeButtonText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 16,
+    color: "#FFFFFF",
   },
   error: {
-    ...Typography.caption,
-    color: Colors.textDanger,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#B12E58",
     textAlign: "center",
-    marginTop: Spacing.lg,
+    marginTop: 4,
+  },
+  buttonPressed: {
+    opacity: 0.85,
   },
 });
