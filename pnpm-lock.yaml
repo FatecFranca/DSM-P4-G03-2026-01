@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@expo/cli@55.0.32':
+    hash: fnwteq5bigyinlehqycn3jbq6y
+    path: patches/@expo__cli@55.0.32.patch
+
 importers:
 
   .:
@@ -5298,7 +5303,7 @@ snapshots:
 
   '@expo-google-fonts/poppins@0.4.1': {}
 
-  '@expo/cli@55.0.32(@expo/dom-webview@55.0.6)(expo-constants@55.0.16(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0)))(expo-font@55.0.8(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)(typescript@5.9.2)':
+  '@expo/cli@55.0.32(patch_hash=fnwteq5bigyinlehqycn3jbq6y)(@expo/dom-webview@55.0.6)(expo-constants@55.0.16(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0)))(expo-font@55.0.8(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)(typescript@5.9.2)':
     dependencies:
       '@expo/code-signing-certificates': 0.0.6
       '@expo/config': 55.0.17(typescript@5.9.2)
@@ -7145,7 +7150,7 @@ snapshots:
   expo@55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-native-webview@13.16.0(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)(typescript@5.9.2):
     dependencies:
       '@babel/runtime': 7.29.2
-      '@expo/cli': 55.0.32(@expo/dom-webview@55.0.6)(expo-constants@55.0.16(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0)))(expo-font@55.0.8(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
+      '@expo/cli': 55.0.32(patch_hash=fnwteq5bigyinlehqycn3jbq6y)(@expo/dom-webview@55.0.6)(expo-constants@55.0.16(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0)))(expo-font@55.0.8(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       '@expo/config': 55.0.17(typescript@5.9.2)
       '@expo/config-plugins': 55.0.10
       '@expo/devtools': 55.0.3(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)

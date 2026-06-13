@@ -41,9 +41,7 @@ export const CancelAlertParamsSchema = z.object({
 
 export type CancelAlertParams = z.infer<typeof CancelAlertParamsSchema>;
 
-export const CancelAlertRequestSchema = z.object({
-  pin: z.string().optional(),
-});
+export const CancelAlertRequestSchema = z.object({});
 
 export type CancelAlertRequest = z.infer<typeof CancelAlertRequestSchema>;
 

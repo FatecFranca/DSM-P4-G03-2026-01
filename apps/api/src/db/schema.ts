@@ -38,7 +38,6 @@ export const alertRiskLevelEnum = pgEnum("alert_risk_level", [
 export const alertAuditEventEnum = pgEnum("alert_audit_event", [
   "started",
   "cancelled",
-  "cancelled_duress",
   "escalated",
 ]);
 

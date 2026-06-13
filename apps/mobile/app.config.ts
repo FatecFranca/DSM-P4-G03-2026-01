@@ -22,6 +22,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? "com.protecther.app",
       infoPlist: {
         ...config.ios?.infoPlist,
+        NSLocalNetworkUsageDescription:
+          "O app precisa acessar a API de desenvolvimento na sua rede local.",
+        NSAppTransportSecurity: {
+          NSAllowsLocalNetworking: true,
+        },
         UIBackgroundModes: [
           ...new Set([
             ...((config.ios?.infoPlist as { UIBackgroundModes?: string[] })

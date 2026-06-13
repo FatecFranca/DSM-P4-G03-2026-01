@@ -17,5 +17,10 @@
     "concurrently": "9.1.2",
     "typescript": "5.9.2"
   },
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "pnpm": {
+    "patchedDependencies": {
+      "@expo/cli@55.0.32": "patches/@expo__cli@55.0.32.patch"
+    }
+  }
 }

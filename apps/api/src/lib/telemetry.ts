@@ -3,7 +3,6 @@ import type { FastifyBaseLogger } from "fastify";
 export type AlertTelemetryEvent =
   | "alert_started"
   | "alert_cancel_requested"
-  | "alert_cancel_duress"
   | "alert_feed_viewed"
   | "location_point_sent"
   | "location_ingest_rejected"

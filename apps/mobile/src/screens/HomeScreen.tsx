@@ -220,7 +220,7 @@ export function HomeScreen({ navigation }: Props) {
 
         <View style={styles.sosSection}>
           <Text style={styles.sosLabel}>
-            Emergência? Aperte o colar 3 vezes{"\n"}ou pressione o botão
+            Emergência? Aperte o colar 1 vez{"\n"}ou pressione o botão
           </Text>
 
           <Animated.View

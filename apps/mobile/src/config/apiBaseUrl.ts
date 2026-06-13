@@ -55,17 +55,27 @@ function resolveDevLoopback(baseUrl: string): string {
   return baseUrl;
 }
 
+function readConfiguredApiUrl(): string {
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL;
+  if (typeof fromEnv === "string" && fromEnv.length > 0) {
+    return fromEnv.replace(/\/$/, "");
+  }
+
+  const fromExtra = Constants.expoConfig?.extra?.apiUrl;
+  if (typeof fromExtra === "string" && fromExtra.length > 0) {
+    return fromExtra.replace(/\/$/, "");
+  }
+
+  throw new Error(
+    "Missing API URL — set EXPO_PUBLIC_API_URL in apps/mobile/.env and restart Metro.",
+  );
+}
+
 /**
- * Base URL for the ProtectHer API, from Expo config (`extra.apiUrl`).
- * Set via `EXPO_PUBLIC_API_URL` at bundle time (see `app.config.ts`).
+ * Base URL for the ProtectHer API.
+ * Prefer `EXPO_PUBLIC_API_URL` from the Metro bundle (`.env` at bundle time).
+ * Falls back to `extra.apiUrl` embedded in the native dev client build.
  */
 export function getApiBaseUrl(): string {
-  const raw = Constants.expoConfig?.extra?.apiUrl;
-  if (typeof raw !== "string" || raw.length === 0) {
-    throw new Error(
-      "Missing extra.apiUrl — check app.config.ts and EXPO_PUBLIC_API_URL.",
-    );
-  }
-  const trimmed = raw.replace(/\/$/, "");
-  return resolveDevLoopback(trimmed);
+  return resolveDevLoopback(readConfiguredApiUrl());
 }

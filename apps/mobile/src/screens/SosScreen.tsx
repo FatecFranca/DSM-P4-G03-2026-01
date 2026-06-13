@@ -19,6 +19,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import { ensureAndroidAlertsChannel } from "../notifications/androidAlertsChannel";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
@@ -71,6 +72,8 @@ export function SosScreen({ navigation }: Props) {
         return;
       }
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
+      // Inicia o streaming de GPS na hora, sem esperar o polling de ~25s.
+      requestLocationSyncNow();
       try {
         const perms = await Notifications.getPermissionsAsync();
         if (!perms.granted) {
@@ -122,7 +125,9 @@ export function SosScreen({ navigation }: Props) {
           <Text style={[styles.title, isSmallScreen && styles.titleSmall]}>
             Iniciar Alerta
           </Text>
-          <Text style={[styles.subtitle, isSmallScreen && styles.subtitleSmall]}>
+          <Text
+            style={[styles.subtitle, isSmallScreen && styles.subtitleSmall]}
+          >
             Escolha o modo do alerta. Seus contatos{"\n"}de emergência serão
             notificados{"\n"}imediatamente
           </Text>
@@ -130,7 +135,9 @@ export function SosScreen({ navigation }: Props) {
 
         <View style={styles.cards}>
           <View style={styles.modeCard}>
-            <Text style={[styles.modeTitle, isSmallScreen && styles.modeTitleSmall]}>
+            <Text
+              style={[styles.modeTitle, isSmallScreen && styles.modeTitleSmall]}
+            >
               Modo Visível
             </Text>
             <Text style={styles.modeDesc}>
@@ -154,7 +161,9 @@ export function SosScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.modeCard}>
-            <Text style={[styles.modeTitle, isSmallScreen && styles.modeTitleSmall]}>
+            <Text
+              style={[styles.modeTitle, isSmallScreen && styles.modeTitleSmall]}
+            >
               Modo Discreto
             </Text>
             <Text style={styles.modeDesc}>

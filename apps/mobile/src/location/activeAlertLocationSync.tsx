@@ -18,6 +18,7 @@ import {
   makeLocationDedupeKey,
   sendLocationOrQueue,
 } from "./locationQueue";
+import { onRequestLocationSync } from "./locationSyncTrigger";
 import { ACTIVE_ALERT_ID_STORAGE_KEY } from "./locationTaskNames";
 
 const POLL_MS = 25_000;
@@ -28,7 +29,7 @@ function fgIntervalMs(): number {
     | { locationForegroundIntervalMs?: number }
     | undefined;
   const v = extra?.locationForegroundIntervalMs;
-  return typeof v === "number" && v >= 3000 ? v : 10_000;
+  return typeof v === "number" && v >= 3000 ? v : 5_000;
 }
 
 function bgIntervalMs(): number {
@@ -301,6 +302,7 @@ export function ActiveAlertLocationSync() {
     const runSync = () => void syncRef.current();
     void runSync();
     const interval = setInterval(runSync, POLL_MS);
+    const unsubscribeTrigger = onRequestLocationSync(runSync);
     const sub = AppState.addEventListener("change", (next) => {
       appState.current = next;
       if (next === "active") {
@@ -311,6 +313,7 @@ export function ActiveAlertLocationSync() {
     });
     return () => {
       clearInterval(interval);
+      unsubscribeTrigger();
       sub.remove();
       stopForeground();
       void stopBackground();

@@ -15,7 +15,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -44,7 +43,6 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Pulsing indicator animation (smooth)
@@ -125,13 +123,9 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
     setLoading(true);
     try {
       const path = `/alerts/${encodeURIComponent(alertId)}/cancel`;
-      const body =
-        pin.trim().length > 0
-          ? JSON.stringify({ pin: pin.trim() })
-          : JSON.stringify({});
       const result = await apiFetchJson<unknown>(path, {
         method: "POST",
-        body,
+        body: JSON.stringify({}),
         accessToken: getAccessToken(),
       });
       if (!result.ok) {
@@ -192,7 +186,9 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.brand}>Protect Her</Text>
-        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+        <Text
+          style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}
+        >
           Alerta ativo
         </Text>
 
@@ -239,19 +235,9 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
         <View style={styles.sectionCard}>
           <Text style={styles.cancelTitle}>Estou segura</Text>
           <Text style={styles.cancelDesc}>
-            PIN opcional. Se preenchido, o sistema entende que você está sob
-            coação. O alerta encerra para você, mas o risco é elevado no
-            sistema.
+            Encerrar o alerta interrompe o rastreamento e avisa que você está
+            segura.
           </Text>
-          <TextInput
-            placeholder="PIN de coação (opcional)"
-            placeholderTextColor="#8B7378"
-            cursorColor="#DA8295"
-            secureTextEntry
-            value={pin}
-            onChangeText={setPin}
-            style={styles.input}
-          />
           <Pressable
             onPress={handleCancelPress}
             disabled={loading}
@@ -394,16 +380,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#6A5157",
     lineHeight: 18,
-  },
-  input: {
-    minHeight: 44,
-    borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: "#FFD0E1",
-    color: "#55383E",
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
   },
   cancelButton: {
     minHeight: 44,

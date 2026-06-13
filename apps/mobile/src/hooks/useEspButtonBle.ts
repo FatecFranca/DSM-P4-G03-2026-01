@@ -162,6 +162,11 @@ export function useEspButtonBle(
       }
 
       console.log("Alerta disparado com sucesso:", body.data.alert.id);
+      // Inicia o streaming de GPS na hora, sem esperar o polling de ~25s.
+      const {
+        requestLocationSyncNow,
+      } = require("../location/locationSyncTrigger");
+      requestLocationSyncNow();
       onAlertTriggered?.(body.data.alert.id);
     } catch (err) {
       console.log("Erro ao disparar alerta:", err);

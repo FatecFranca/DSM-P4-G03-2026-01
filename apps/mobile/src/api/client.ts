@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "../config/apiBaseUrl";
+import { formatFetchError } from "../lib/apiError";
 
 export type ApiResult<T> =
   | { ok: true; status: number; data: T }
@@ -22,10 +23,23 @@ export async function apiFetchJson<T>(
 
   const { accessToken: _token, ...rest } = options;
 
-  const response = await fetch(url, {
-    ...rest,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...rest,
+      headers,
+    });
+  } catch (error) {
+    const message = formatFetchError(error, url);
+    if (__DEV__) {
+      console.warn("[apiFetchJson] network error", { url, error });
+    }
+    return {
+      ok: false,
+      status: 0,
+      body: { error: { code: "NETWORK_ERROR", message } },
+    };
+  }
 
   const body: unknown = await response.json().catch(() => null);
 

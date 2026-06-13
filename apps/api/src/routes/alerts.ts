@@ -54,10 +54,6 @@ function isUniqueViolation(error: unknown): boolean {
   return cause === "23505";
 }
 
-function isDuressCancel(pin: string | undefined): boolean {
-  return typeof pin === "string" && pin.trim().length > 0;
-}
-
 const LOCATION_INGEST_MAX_PER_MINUTE = Number(
   process.env.ALERT_LOCATION_RATE_MAX_PER_MINUTE ?? 300,
 );
@@ -578,7 +574,6 @@ export async function registerAlertRoutes(
     }
 
     const alertId = params.data.id;
-    const duress = isDuressCancel(bodyParsed.data.pin);
 
     logAlertTelemetry(request.log, "alert_cancel_requested", { alertId });
 
@@ -601,13 +596,6 @@ export async function registerAlertRoutes(
     }
 
     const endedAt = new Date();
-    const riskLevel = duress ? "high" : row.riskLevel;
-    const cancelReason = duress ? "duress" : null;
-    const auditEvent = duress ? "cancelled_duress" : "cancelled";
-
-    if (duress) {
-      logAlertTelemetry(request.log, "alert_cancel_duress", { alertId });
-    }
 
     const [updated] = await db.transaction(async (tx) => {
       const [u] = await tx
@@ -615,8 +603,7 @@ export async function registerAlertRoutes(
         .set({
           status: "closed",
           endedAt,
-          riskLevel,
-          cancelReason,
+          cancelReason: null,
         })
         .where(eq(alerts.id, alertId))
         .returning();
@@ -625,8 +612,8 @@ export async function registerAlertRoutes(
         await tx.insert(alertAuditEvents).values({
           alertId,
           actorUserId: userId,
-          event: auditEvent,
-          payload: { previousRiskLevel: row.riskLevel, riskLevel },
+          event: "cancelled",
+          payload: { riskLevel: row.riskLevel },
         });
       }
 
