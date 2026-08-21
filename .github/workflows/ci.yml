@@ -78,3 +78,21 @@ jobs:
         run: corepack pnpm --filter protecther-api db:migrate
       - name: Rodar testes
         run: corepack pnpm --filter protecther-api test
+
+  test-mobile:
+    name: Testes Mobile (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: corepack enable
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: corepack pnpm install --frozen-lockfile
+      - run: corepack pnpm run build:packages
+      - run: corepack pnpm --filter protecther-mobile test

@@ -12,7 +12,9 @@ export type MobileTelemetryEvent =
   | "push_permission_denied"
   | "push_token_registered"
   | "push_token_register_failed"
-  | "push_notification_received";
+  | "push_notification_received"
+  | "experiment_exposed"
+  | "experiment_converted";
 
 /** Sem PII: apenas códigos/ids já expostos ao cliente. */
 export function logMobileTelemetry(
