@@ -1,0 +1,43 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Perfil de build EAS"
+        type: choice
+        default: preview
+        options: [preview, production]
+
+jobs:
+  build-android:
+    name: Build Android (EAS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: corepack enable
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: corepack pnpm install --frozen-lockfile
+      - run: corepack pnpm run build:packages
+
+      - name: Configurar EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Disparar build no EAS
+        working-directory: apps/mobile
+        run: |
+          eas build --platform android \
+            --profile ${{ github.event.inputs.profile || 'preview' }} \
+            --non-interactive --no-wait
