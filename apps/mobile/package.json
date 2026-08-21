@@ -11,7 +11,9 @@
     "ios:build": "node ../../node_modules/expo/bin/cli run:ios",
     "web": "node ../../node_modules/expo/bin/cli start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@expo-google-fonts/italianno": "^0.4.1",
@@ -43,7 +45,8 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/react": "~19.2.10",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "3.0.9"
   },
   "private": true
 }
