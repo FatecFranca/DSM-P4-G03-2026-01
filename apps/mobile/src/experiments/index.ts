@@ -7,6 +7,7 @@ export {
   type StoredExperimentEvent,
 } from "./eventStore";
 export { EXPERIMENTS, SOS_BUTTON_EXPERIMENT } from "./experiments";
+export { resolveSosCircleScale } from "./sosCircleScale";
 export {
   resolveSosButtonPresentation,
   type SosButtonPresentation,

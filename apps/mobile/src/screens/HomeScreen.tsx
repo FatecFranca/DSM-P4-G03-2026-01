@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useEspButtonBleState } from "../ble/EspButtonBleContext";
+import { resolveSosCircleScale, useSosExperiment } from "../experiments";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
 import {
@@ -38,8 +39,10 @@ export function HomeScreen({ navigation }: Props) {
   const isSmallScreen = height < 700 || width < 360;
   const isVeryNarrow = width < 350;
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
-  const outerSize = isSmallScreen ? 178 : 198;
-  const innerSize = isSmallScreen ? 148 : 168;
+  const { variantId, trackConversion } = useSosExperiment();
+  const circleScale = resolveSosCircleScale(variantId);
+  const outerSize = (isSmallScreen ? 178 : 198) * circleScale;
+  const innerSize = (isSmallScreen ? 148 : 168) * circleScale;
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -117,6 +120,7 @@ export function HomeScreen({ navigation }: Props) {
         setSosError("Resposta inválida da API");
         return;
       }
+      trackConversion("sos_time_to_trigger");
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
       await scheduleAlertStartedNotification(
         "Alerta visível iniciado. Seus contatos estão sendo notificados.",
@@ -125,7 +129,7 @@ export function HomeScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [activeAlertId, getAccessToken, navigation]);
+  }, [activeAlertId, getAccessToken, navigation, trackConversion]);
 
   if (state.status !== "authenticated") {
     return null;
@@ -175,16 +179,6 @@ export function HomeScreen({ navigation }: Props) {
         <View style={styles.userBlock}>
           <Text style={styles.greeting}>Olá, {firstName}</Text>
           <Text style={styles.email}>{user.email}</Text>
-          <Pressable
-            onPress={() => void startAlert()}
-            disabled={loading}
-            style={({ pressed }) => [
-              styles.startAlertBtn,
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <Text style={styles.startAlertBtnText}>Iniciar alerta</Text>
-          </Pressable>
         </View>
 
         {activeAlertId ? (
@@ -351,23 +345,6 @@ const styles = StyleSheet.create({
     color: "#55383E",
     marginTop: -4,
     includeFontPadding: false,
-  },
-  startAlertBtn: {
-    alignSelf: "flex-start",
-    minHeight: 22,
-    marginTop: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: "#DA8295",
-    backgroundColor: "#FFFFFF",
-  },
-  startAlertBtnText: {
-    fontFamily: "Poppins_500Medium",
-    fontSize: 11,
-    color: "#DA8295",
-    lineHeight: 14,
   },
   logoutBtn: {
     minWidth: 36,
