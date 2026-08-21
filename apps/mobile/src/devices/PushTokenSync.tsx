@@ -2,7 +2,6 @@ import {
   ContactsAlertFeedResponseSchema,
   RegisterPushTokenRequestSchema,
 } from "@protecther/contracts";
-import Constants from "expo-constants";
 import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { apiFetchJson } from "../api/client";
@@ -10,6 +9,7 @@ import { useAuth } from "../auth/AuthContext";
 import { logMobileTelemetry } from "../lib/telemetry";
 import { navigationRef } from "../navigation/navigationRef";
 import { ensureAndroidAlertsChannel } from "../notifications/androidAlertsChannel";
+import { canUseExpoNotifications } from "../notifications/canUseNotifications";
 
 let notificationHandlerRegistered = false;
 
@@ -78,12 +78,8 @@ export function PushTokenSync() {
       pushRegisteredRef.current = false;
       return;
     }
-    if (Platform.OS === "web") {
-      return;
-    }
-    /* Expo Go não suporta push remoto no Android (SDK 53+); evita carregar o módulo e os WARNs. */
-    if (Constants.appOwnership === "expo") {
-      logMobileTelemetry("push_token_skipped", { reason: "expo_go" });
+    if (!canUseExpoNotifications()) {
+      logMobileTelemetry("push_token_skipped", { reason: "expo_go_or_web" });
       return;
     }
 
@@ -116,10 +112,7 @@ export function PushTokenSync() {
   }, [accessToken]);
 
   useEffect(() => {
-    if (!accessToken || Platform.OS === "web") {
-      return;
-    }
-    if (Constants.appOwnership === "expo") {
+    if (!accessToken || !canUseExpoNotifications()) {
       return;
     }
     let sub: { remove: () => void } | null = null;
@@ -139,13 +132,7 @@ export function PushTokenSync() {
   }, [accessToken]);
 
   useEffect(() => {
-    if (!accessToken) {
-      return;
-    }
-    if (Platform.OS === "web") {
-      return;
-    }
-    if (Constants.appOwnership === "expo") {
+    if (!accessToken || !canUseExpoNotifications()) {
       return;
     }
 

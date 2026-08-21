@@ -1,9 +1,21 @@
-import { logMobileTelemetry } from "../lib/telemetry";
-import { createExperimentTracker } from "./tracking";
-
 export { assignVariant } from "./assignment";
+export { elapsedMs } from "./elapsed";
+export {
+  clearExperimentEvents,
+  readExperimentEvents,
+  recordExperimentEvent,
+  type StoredExperimentEvent,
+} from "./eventStore";
 export { EXPERIMENTS, SOS_BUTTON_EXPERIMENT } from "./experiments";
+export {
+  resolveSosButtonPresentation,
+  type SosButtonPresentation,
+} from "./sosButtonPresentation";
+export {
+  summarizeExperimentEvents,
+  type ExperimentSummary,
+  type VariantSummary,
+} from "./summary";
+export { experimentTracker } from "./trackerInstance";
 export type { Experiment, ExperimentVariant } from "./types";
-
-/** Tracker do processo: a deduplicação de exposição vale enquanto o app estiver vivo. */
-export const experimentTracker = createExperimentTracker(logMobileTelemetry);
+export { useSosExperiment } from "./useSosExperiment";

@@ -3,26 +3,29 @@ import {
   StartAlertResponseSchema,
 } from "@protecther/contracts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import * as Notifications from "expo-notifications";
-import { useEffect, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   Vibration,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { requestLocationSyncNow } from "../location/locationSyncTrigger";
-import { ensureAndroidAlertsChannel } from "../notifications/androidAlertsChannel";
+import { resolveSosButtonPresentation, useSosExperiment } from "../experiments";
 import { formatApiError } from "../lib/apiError";
+import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import type { AppStackParamList } from "../navigation/types";
+import {
+  scheduleAlertStartedNotification,
+  setupLocalAlertNotifications,
+} from "../notifications/localAlerts";
 import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Sos">;
@@ -35,17 +38,11 @@ export function SosScreen({ navigation }: Props) {
   const { getAccessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { variantId, trackConversion } = useSosExperiment();
+  const buttonPresentation = resolveSosButtonPresentation(variantId);
 
   useEffect(() => {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-    void ensureAndroidAlertsChannel(Notifications).catch(() => {});
+    void setupLocalAlertNotifications();
   }, []);
 
   const startAlert = async (mode: "visible" | "discreet") => {
@@ -71,26 +68,13 @@ export function SosScreen({ navigation }: Props) {
         setError("Resposta inválida da API");
         return;
       }
+      trackConversion("sos_time_to_trigger");
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
       // Inicia o streaming de GPS na hora, sem esperar o polling de ~25s.
       requestLocationSyncNow();
-      try {
-        const perms = await Notifications.getPermissionsAsync();
-        if (!perms.granted) {
-          await Notifications.requestPermissionsAsync();
-        }
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "🚨 Alerta de Perigo Ativo",
-            body: `Alerta ${mode === "visible" ? "visível" : "discreto"} iniciado. Seus contatos estão sendo notificados.`,
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.HIGH,
-          },
-          trigger: null,
-        });
-      } catch {
-        /* notificação pode falhar em ambiente sem suporte — não bloquear */
-      }
+      await scheduleAlertStartedNotification(
+        `Alerta ${mode === "visible" ? "visível" : "discreto"} iniciado. Seus contatos estão sendo notificados.`,
+      );
       navigation.replace("ActiveAlert", { alertId: body.data.alert.id });
     } finally {
       setLoading(false);
@@ -149,13 +133,21 @@ export function SosScreen({ navigation }: Props) {
               disabled={loading}
               style={({ pressed }) => [
                 styles.modeButton,
+                { minHeight: buttonPresentation.minHeight },
                 (pressed || loading) && styles.buttonPressed,
               ]}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.modeButtonText}>Ativar visível</Text>
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    { fontSize: buttonPresentation.fontSize },
+                  ]}
+                >
+                  Ativar visível
+                </Text>
               )}
             </Pressable>
           </View>
@@ -175,13 +167,21 @@ export function SosScreen({ navigation }: Props) {
               disabled={loading}
               style={({ pressed }) => [
                 styles.modeButton,
+                { minHeight: buttonPresentation.minHeight },
                 (pressed || loading) && styles.buttonPressed,
               ]}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.modeButtonText}>Ativar discreto</Text>
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    { fontSize: buttonPresentation.fontSize },
+                  ]}
+                >
+                  Ativar discreto
+                </Text>
               )}
             </Pressable>
           </View>

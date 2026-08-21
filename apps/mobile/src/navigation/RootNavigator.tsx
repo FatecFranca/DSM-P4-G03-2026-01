@@ -7,6 +7,7 @@ import { ContactAlertDetailScreen } from "../screens/ContactAlertDetailScreen";
 import { ContactAlertsFeedScreen } from "../screens/ContactAlertsFeedScreen";
 import { ContactsScreen } from "../screens/ContactsScreen";
 import { DeviceManagementScreen } from "../screens/DeviceManagementScreen";
+import { ExperimentDashboardScreen } from "../screens/ExperimentDashboardScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
@@ -101,6 +102,11 @@ function AppNavigator() {
         name="DeviceManagement"
         component={DeviceManagementScreen}
         options={{ title: "Dispositivos BLE" }}
+      />
+      <AppStack.Screen
+        name="ExperimentDashboard"
+        component={ExperimentDashboardScreen}
+        options={{ title: "Resultados A/B" }}
       />
     </AppStack.Navigator>
   );

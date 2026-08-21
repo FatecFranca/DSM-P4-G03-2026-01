@@ -2,7 +2,6 @@ import { ActiveAlertResponseSchema, StartAlertRequestSchema, StartAlertResponseS
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Notifications from "expo-notifications";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,7 +20,10 @@ import { useAuth } from "../auth/AuthContext";
 import { useEspButtonBleState } from "../ble/EspButtonBleContext";
 import { formatApiError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
-import { ensureAndroidAlertsChannel } from "../notifications/androidAlertsChannel";
+import {
+  scheduleAlertStartedNotification,
+  setupLocalAlertNotifications,
+} from "../notifications/localAlerts";
 import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Home">;
@@ -85,15 +87,7 @@ export function HomeScreen({ navigation }: Props) {
   );
 
   useEffect(() => {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-    void ensureAndroidAlertsChannel(Notifications).catch(() => {});
+    void setupLocalAlertNotifications();
   }, []);
 
   const startAlert = useCallback(async () => {
@@ -124,23 +118,9 @@ export function HomeScreen({ navigation }: Props) {
         return;
       }
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
-      try {
-        const perms = await Notifications.getPermissionsAsync();
-        if (!perms.granted) {
-          await Notifications.requestPermissionsAsync();
-        }
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "🚨 Alerta de Perigo Ativo",
-            body: "Alerta visível iniciado. Seus contatos estão sendo notificados.",
-            sound: true,
-            priority: Notifications.AndroidNotificationPriority.HIGH,
-          },
-          trigger: null,
-        });
-      } catch {
-        /* notificação pode falhar em ambiente sem suporte */
-      }
+      await scheduleAlertStartedNotification(
+        "Alerta visível iniciado. Seus contatos estão sendo notificados.",
+      );
       navigation.navigate("ActiveAlert", { alertId: body.data.alert.id });
     } finally {
       setLoading(false);
@@ -312,6 +292,16 @@ export function HomeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("DeviceManagement")}
           >
             <Text style={styles.actionLabel}>Dispositivos{"\n"}conectados</Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.actionCard,
+              isVeryNarrow ? styles.actionCardNarrow : undefined,
+            ]}
+            onPress={() => navigation.navigate("ExperimentDashboard")}
+          >
+            <Text style={styles.actionLabel}>Resultados{"\n"}A/B</Text>
           </Pressable>
         </View>
       </ScrollView>
