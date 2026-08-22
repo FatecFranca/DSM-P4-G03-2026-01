@@ -15,7 +15,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.protecther.app",
       "infoPlist": {
-        "UIBackgroundModes": ["location"],
+        "UIBackgroundModes": [
+          "location"
+        ],
         "NSBluetoothAlwaysUsageDescription": "O Bluetooth é usado para conectar ao botão físico ESP32 via BLE.",
         "NSBluetoothPeripheralUsageDescription": "O Bluetooth é usado para conectar ao botão físico ESP32 via BLE.",
         "ITSAppUsesNonExemptEncryption": false
@@ -39,9 +41,9 @@
       "locationForegroundIntervalMs": 5000,
       "locationBackgroundIntervalMs": 15000,
       "eas": {
-        "projectId": "6bdaad43-e5a4-4838-aca8-50cb64a7ce17"
+        "projectId": "622d7eef-89e1-4917-beef-1efda739b976"
       }
     },
-    "owner": "liszenith"
+    "owner": "sampledll"
   }
 }
