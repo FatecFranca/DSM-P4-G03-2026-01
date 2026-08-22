@@ -15,8 +15,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
@@ -241,7 +241,9 @@ export function ContactsScreen(_props: Props) {
       >
         <Text style={styles.brand}>Protect Her</Text>
 
-        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+        <Text
+          style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}
+        >
           Contatos de Emergência
         </Text>
 

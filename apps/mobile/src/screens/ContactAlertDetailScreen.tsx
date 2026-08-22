@@ -10,8 +10,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -150,7 +150,9 @@ export function ContactAlertDetailScreen({ route }: Props) {
         scrollEnabled={!mapTouching}
       >
         <Text style={styles.brand}>Protect Her</Text>
-        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+        <Text
+          style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}
+        >
           Localização em tempo real
         </Text>
         <Text style={styles.pageSubtitle}>Titular: {ownerName}</Text>
@@ -181,8 +183,13 @@ export function ContactAlertDetailScreen({ route }: Props) {
               originWhitelist={["*"]}
             />
             <Pressable
-              style={({ pressed }) => [styles.centerBtn, pressed && styles.pressed]}
-              onPress={() => webViewRef.current?.injectJavaScript("centerMap()")}
+              style={({ pressed }) => [
+                styles.centerBtn,
+                pressed && styles.pressed,
+              ]}
+              onPress={() =>
+                webViewRef.current?.injectJavaScript("centerMap()")
+              }
             >
               <Text style={styles.centerBtnText}>Centralizar</Text>
             </Pressable>

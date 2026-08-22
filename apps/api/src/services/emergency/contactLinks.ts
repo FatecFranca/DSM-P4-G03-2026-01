@@ -86,12 +86,7 @@ export async function acceptPendingInvitesForUser(
 
     try {
       await db.transaction(async (tx) => {
-        await acceptInviteRecord(
-          tx,
-          invite.id,
-          invite.ownerUserId,
-          userId,
-        );
+        await acceptInviteRecord(tx, invite.id, invite.ownerUserId, userId);
       });
       accepted += 1;
     } catch (error) {

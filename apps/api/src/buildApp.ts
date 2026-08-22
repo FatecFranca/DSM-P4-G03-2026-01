@@ -1,9 +1,9 @@
+import { existsSync, readFileSync } from "node:fs";
+import { extname, join, resolve } from "node:path";
 import cors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
-import { existsSync, readFileSync } from "node:fs";
-import { extname, join, resolve } from "node:path";
 import { startAlertEscalationScheduler } from "./jobs/alertEscalationTick.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAlertRoutes } from "./routes/alerts.js";
@@ -134,7 +134,9 @@ export async function buildServer() {
     const filePath = join(STATIC_DIR, safePath || "index.html");
 
     if (!existsSync(filePath) || !filePath.startsWith(STATIC_DIR)) {
-      return reply.status(404).send({ error: { code: "NOT_FOUND", message: "File not found" } });
+      return reply
+        .status(404)
+        .send({ error: { code: "NOT_FOUND", message: "File not found" } });
     }
 
     const ext = extname(filePath).toLowerCase();

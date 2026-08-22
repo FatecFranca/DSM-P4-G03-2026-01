@@ -10,8 +10,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
@@ -133,7 +133,9 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
       >
         <Text style={styles.brand}>Protect Her</Text>
 
-        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+        <Text
+          style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}
+        >
           Alertas
         </Text>
         <Text style={styles.subtitle}>
@@ -193,14 +195,18 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
                       Desde {formatTime(row.startedAt)}
                     </Text>
                     <Text style={styles.alertMeta}>
-                      {row.mode === "visible" ? "Modo visível" : "Modo discreto"}
+                      {row.mode === "visible"
+                        ? "Modo visível"
+                        : "Modo discreto"}
                       {" · "}
                       Risco {row.risk === "high" ? "alto" : "normal"}
                     </Text>
                   </View>
                   <PulsingDot />
                 </View>
-                <Text style={styles.alertAction}>Ver localização em tempo real</Text>
+                <Text style={styles.alertAction}>
+                  Ver localização em tempo real
+                </Text>
               </Pressable>
             ))}
           </View>

@@ -3,6 +3,7 @@ import {
   RegisterBleDeviceRequestSchema,
   RegisterBleDeviceResponseSchema,
 } from "@protecther/contracts";
+import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,10 +12,9 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -255,7 +255,9 @@ export function DeviceManagementScreen() {
         ]}
       >
         <Text style={styles.brand}>Protect Her</Text>
-        <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+        <Text
+          style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}
+        >
           Dispositivos BLE
         </Text>
         <Text style={styles.subtitle}>Gerencie seus dispositivos pareados</Text>
@@ -265,7 +267,9 @@ export function DeviceManagementScreen() {
             <View style={styles.bannerIconCircle}>
               <Text style={styles.bannerIcon}>✓</Text>
             </View>
-            <Text style={styles.pairedText}>Dispositivo Pareado localmente</Text>
+            <Text style={styles.pairedText}>
+              Dispositivo Pareado localmente
+            </Text>
           </View>
         ) : (
           <View style={styles.unpairedBanner}>
@@ -296,7 +300,9 @@ export function DeviceManagementScreen() {
             <Text style={styles.emptyText}>Nenhum dispositivo registrado</Text>
           </View>
         ) : (
-          <View style={styles.list}>{devices.map((item) => renderDevice(item))}</View>
+          <View style={styles.list}>
+            {devices.map((item) => renderDevice(item))}
+          </View>
         )}
       </ScrollView>
     </View>

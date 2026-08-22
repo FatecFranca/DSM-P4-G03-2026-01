@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { desc, eq } from "drizzle-orm";
+import { resolvePushProviderMode } from "../src/config/env.js";
 import { db } from "../src/db/index.js";
 import {
   alerts,
@@ -8,7 +9,6 @@ import {
   pushDeliveryEvents,
   users,
 } from "../src/db/schema.js";
-import { resolvePushProviderMode } from "../src/config/env.js";
 
 const alertIdArg = process.argv[2];
 
@@ -32,7 +32,9 @@ async function main(): Promise<void> {
 
   console.log("\n=== device_push_tokens ===");
   if (tokens.length === 0) {
-    console.log("(vazio) — contato provavelmente não registrou POST /devices/push-token");
+    console.log(
+      "(vazio) — contato provavelmente não registrou POST /devices/push-token",
+    );
   } else {
     for (const t of tokens) {
       console.log({

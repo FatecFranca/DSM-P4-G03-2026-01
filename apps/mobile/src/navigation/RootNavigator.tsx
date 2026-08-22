@@ -67,7 +67,9 @@ function AuthNavigator() {
 
 function AppNavigator() {
   return (
-    <AppStack.Navigator screenOptions={{ ...screenOptions, headerShown: false }}>
+    <AppStack.Navigator
+      screenOptions={{ ...screenOptions, headerShown: false }}
+    >
       <AppStack.Screen
         name="Home"
         component={HomeScreen}

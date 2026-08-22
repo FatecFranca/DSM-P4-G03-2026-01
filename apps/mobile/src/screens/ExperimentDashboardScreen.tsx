@@ -67,8 +67,7 @@ export function ExperimentDashboardScreen(_props: Props) {
     >
       <Text style={styles.title}>Resultados do teste A/B</Text>
       <Text style={styles.subtitle}>
-        Dados coletados neste dispositivo. Use a tela de SOS para gerar
-        eventos.
+        Dados coletados neste dispositivo. Use a tela de SOS para gerar eventos.
       </Text>
 
       {summaries === null ? (

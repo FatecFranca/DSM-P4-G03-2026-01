@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 /**
  * Descobre a connection string do Supavisor que funciona para este project ref.
  * Uso (na raiz do monorepo ou em apps/api):
@@ -7,9 +10,6 @@
  *   SUPABASE_PROJECT_REF=kusoyirvvwcqoyqeytcp SUPABASE_DB_PASSWORD=... node scripts/find-supabase-pooler.mjs
  */
 import postgres from "postgres";
-import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const envPath = resolve(__dirname, "../.env");
@@ -23,7 +23,7 @@ function loadEnv() {
       const i = trimmed.indexOf("=");
       if (i === -1) continue;
       const key = trimmed.slice(0, i);
-      let val = trimmed.slice(i + 1);
+      const val = trimmed.slice(i + 1);
       if (!process.env[key]) process.env[key] = val;
     }
   } catch {
@@ -116,7 +116,9 @@ const winners = results.filter((r) => r.ok);
 
 if (winners.length === 0) {
   console.error("Nenhum pooler respondeu. Erros de amostra:");
-  for (const r of results.filter((r) => r.error && !/ENOTFOUND|timeout|ECONNREFUSED/i.test(r.error)).slice(0, 5)) {
+  for (const r of results
+    .filter((r) => r.error && !/ENOTFOUND|timeout|ECONNREFUSED/i.test(r.error))
+    .slice(0, 5)) {
     console.error(`- ${r.label}: ${r.error}`);
   }
   process.exit(1);

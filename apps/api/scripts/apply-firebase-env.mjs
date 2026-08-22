@@ -38,4 +38,6 @@ if (!/^PUSH_USE_FCM_IN_DEV=/m.test(envText)) {
 }
 
 writeFileSync(envPath, envText, "utf8");
-console.log("OK: apps/api/.env atualizado (FIREBASE_SERVICE_ACCOUNT_JSON + PUSH_USE_FCM_IN_DEV).");
+console.log(
+  "OK: apps/api/.env atualizado (FIREBASE_SERVICE_ACCOUNT_JSON + PUSH_USE_FCM_IN_DEV).",
+);

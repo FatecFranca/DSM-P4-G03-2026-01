@@ -29,7 +29,9 @@ export const DashboardFrequentPlaceSchema = z.object({
   percentage: z.number().min(0).max(100),
 });
 
-export type DashboardFrequentPlace = z.infer<typeof DashboardFrequentPlaceSchema>;
+export type DashboardFrequentPlace = z.infer<
+  typeof DashboardFrequentPlaceSchema
+>;
 
 export const DashboardRecentAlertSchema = z.object({
   id: UuidSchema,

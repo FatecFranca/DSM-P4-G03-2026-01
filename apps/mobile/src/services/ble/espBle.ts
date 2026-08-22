@@ -8,6 +8,8 @@ export const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
 let bleManagerInstance: BleManager | null = null;
 
+type BlePlxModule = typeof import("react-native-ble-plx");
+
 export function isBleNativeAvailable(): boolean {
   return Constants.appOwnership !== "expo";
 }
@@ -17,8 +19,7 @@ export function getBleManager(): BleManager | null {
     return null;
   }
   if (!bleManagerInstance) {
-    const { BleManager } =
-      require("react-native-ble-plx") as typeof import("react-native-ble-plx");
+    const { BleManager } = require("react-native-ble-plx") as BlePlxModule;
     bleManagerInstance = new BleManager();
   }
   return bleManagerInstance;

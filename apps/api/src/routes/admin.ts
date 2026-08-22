@@ -147,11 +147,7 @@ type FrequentPlaceRow = {
 };
 
 function normalizePlaceKey(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
+  return name.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
 }
 
 /** Agrupa contagens pelo nome normalizado (evita o mesmo bairro em fatias distintas). */
@@ -184,8 +180,7 @@ function buildTopFrequentPlaces(
   return sorted.map((row) => ({
     label: row.label || unknownLabel,
     count: row.count,
-    percentage:
-      total > 0 ? Math.round((row.count / total) * 10000) / 100 : 0,
+    percentage: total > 0 ? Math.round((row.count / total) * 10000) / 100 : 0,
   }));
 }
 
@@ -213,15 +208,11 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   app.get("/admin/dashboard", async (_request, reply) => {
     try {
       // 1. Total activations
-      const [totalRow] = await db
-        .select({ value: count() })
-        .from(alerts);
+      const [totalRow] = await db.select({ value: count() }).from(alerts);
       const totalActivations = totalRow?.value ?? 0;
 
       // 2. Unique locations
-      const [locRow] = await db
-        .select({ value: count() })
-        .from(alertLocations);
+      const [locRow] = await db.select({ value: count() }).from(alertLocations);
       const uniqueLocations = locRow?.value ?? 0;
 
       // 3. Average arrival time
@@ -247,9 +238,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       const activeAlertsCount = activeRow?.value ?? 0;
 
       // 5. Total users
-      const [usersRow] = await db
-        .select({ value: count() })
-        .from(users);
+      const [usersRow] = await db.select({ value: count() }).from(users);
       const totalUsers = usersRow?.value ?? 0;
 
       // 6. Daily activations
@@ -306,9 +295,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         lng: Number(row.lng),
         count: row.count,
         percentage:
-          totalFreq > 0
-            ? Math.round((row.count / totalFreq) * 10000) / 100
-            : 0,
+          totalFreq > 0 ? Math.round((row.count / totalFreq) * 10000) / 100 : 0,
       }));
 
       // Primeira localização de cada alerta (igual à tabela de estatísticas).

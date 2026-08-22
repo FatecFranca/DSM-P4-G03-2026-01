@@ -15,8 +15,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -120,7 +120,9 @@ export function LoginScreen({ navigation }: Props) {
             source={require("../../assets/login/Icon.png")}
             style={[styles.logoImage, responsiveStyles.logoImage]}
           />
-          <Text style={[styles.appName, responsiveStyles.appName]}>ProtectHer</Text>
+          <Text style={[styles.appName, responsiveStyles.appName]}>
+            ProtectHer
+          </Text>
           <Text style={styles.tagline}>Sua segurança em primeiro lugar</Text>
         </View>
 

@@ -18,13 +18,13 @@ import { emergencyContacts, invites, users } from "../db/schema.js";
 import { normalizeEmail } from "../lib/email.js";
 import { apiError } from "../lib/httpErrors.js";
 import { toUserPublic } from "../lib/mappers.js";
+import type { EmergencyInviteEmailSender } from "../services/email/types.js";
 import {
   acceptInviteRecord,
   acceptPendingInvitesForUser,
   activateEmergencyContactLink,
   isPgUniqueViolation,
 } from "../services/emergency/contactLinks.js";
-import type { EmergencyInviteEmailSender } from "../services/email/types.js";
 
 const INVITE_TTL_HOURS = Number(process.env.INVITE_TTL_HOURS ?? 72);
 
@@ -112,11 +112,7 @@ export async function registerEmergencyRoutes(
               ),
             );
 
-          await activateEmergencyContactLink(
-            tx,
-            owner.id,
-            targetUser.id,
-          );
+          await activateEmergencyContactLink(tx, owner.id, targetUser.id);
 
           const [row] = await tx
             .select()

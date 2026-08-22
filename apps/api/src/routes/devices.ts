@@ -53,7 +53,11 @@ export async function registerDeviceRoutes(
       });
 
     request.log.info(
-      { userId, platform: parsed.data.platform, tokenPrefix: `${parsed.data.token.slice(0, 12)}…` },
+      {
+        userId,
+        platform: parsed.data.platform,
+        tokenPrefix: `${parsed.data.token.slice(0, 12)}…`,
+      },
       "push_token_registered",
     );
 

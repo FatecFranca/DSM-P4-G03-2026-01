@@ -37,9 +37,7 @@ export async function recordExperimentEvent(
   await AsyncStorage.setItem(EVENTS_KEY, JSON.stringify(events));
 }
 
-export async function readExperimentEvents(): Promise<
-  StoredExperimentEvent[]
-> {
+export async function readExperimentEvents(): Promise<StoredExperimentEvent[]> {
   return loadEvents();
 }
 

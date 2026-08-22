@@ -15,7 +15,7 @@ function restoreEnv(snapshot: Record<string, string | undefined>): void {
   for (const key of ENV_KEYS) {
     const value = snapshot[key];
     if (value === undefined) {
-      delete process.env[key];
+      Reflect.deleteProperty(process.env, key);
     } else {
       process.env[key] = value;
     }
@@ -31,8 +31,8 @@ describe("resolvePushProviderMode", () => {
 
   it("uses dev_log in development without Firebase credentials", () => {
     process.env.NODE_ENV = "development";
-    delete process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-    delete process.env.PUSH_USE_FCM_IN_DEV;
+    Reflect.deleteProperty(process.env, "FIREBASE_SERVICE_ACCOUNT_JSON");
+    Reflect.deleteProperty(process.env, "PUSH_USE_FCM_IN_DEV");
     expect(resolvePushProviderMode()).toBe("dev_log");
   });
 
@@ -53,13 +53,13 @@ describe("resolvePushProviderMode", () => {
   it("uses fcm in production when Firebase JSON is set", () => {
     process.env.NODE_ENV = "production";
     process.env.FIREBASE_SERVICE_ACCOUNT_JSON = '{"type":"service_account"}';
-    delete process.env.PUSH_USE_FCM_IN_DEV;
+    Reflect.deleteProperty(process.env, "PUSH_USE_FCM_IN_DEV");
     expect(resolvePushProviderMode()).toBe("fcm");
   });
 
   it("uses stub in production without Firebase credentials", () => {
     process.env.NODE_ENV = "production";
-    delete process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    Reflect.deleteProperty(process.env, "FIREBASE_SERVICE_ACCOUNT_JSON");
     expect(resolvePushProviderMode()).toBe("stub");
   });
 });

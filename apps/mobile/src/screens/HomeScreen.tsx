@@ -1,4 +1,8 @@
-import { ActiveAlertResponseSchema, StartAlertRequestSchema, StartAlertResponseSchema } from "@protecther/contracts";
+import {
+  ActiveAlertResponseSchema,
+  StartAlertRequestSchema,
+  StartAlertResponseSchema,
+} from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,9 +14,9 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   Vibration,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
@@ -145,8 +149,7 @@ export function HomeScreen({ navigation }: Props) {
   } = useEspButtonBleState();
 
   const bleStatusText =
-    bleError ??
-    (bleConnected ? "Dispositivo conectado" : bleStatus);
+    bleError ?? (bleConnected ? "Dispositivo conectado" : bleStatus);
 
   return (
     <View style={styles.container}>
@@ -188,7 +191,9 @@ export function HomeScreen({ navigation }: Props) {
             }
             style={styles.activeAlertBanner}
           >
-            <Text style={styles.activeAlertText}>Alerta ativo em andamento</Text>
+            <Text style={styles.activeAlertText}>
+              Alerta ativo em andamento
+            </Text>
           </Pressable>
         ) : null}
 

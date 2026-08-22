@@ -4,10 +4,10 @@
  */
 import "dotenv/config";
 import { and, eq } from "drizzle-orm";
+import { resolvePushProviderMode } from "../src/config/env.js";
 import { db } from "../src/db/index.js";
 import { devicePushTokens, users } from "../src/db/schema.js";
 import { createFcmPushProvider } from "../src/services/push/fcmProvider.js";
-import { resolvePushProviderMode } from "../src/config/env.js";
 
 const email = process.argv[2]?.trim().toLowerCase();
 if (!email) {
@@ -19,7 +19,9 @@ async function main(): Promise<void> {
   const mode = resolvePushProviderMode();
   console.log({ pushProviderMode: mode, email });
   if (mode !== "fcm") {
-    console.error("API não está em modo FCM. Defina PUSH_USE_FCM_IN_DEV=true e FIREBASE_SERVICE_ACCOUNT_JSON.");
+    console.error(
+      "API não está em modo FCM. Defina PUSH_USE_FCM_IN_DEV=true e FIREBASE_SERVICE_ACCOUNT_JSON.",
+    );
     process.exit(1);
   }
 
@@ -34,7 +36,10 @@ async function main(): Promise<void> {
   }
 
   const tokens = await db
-    .select({ token: devicePushTokens.token, platform: devicePushTokens.platform })
+    .select({
+      token: devicePushTokens.token,
+      platform: devicePushTokens.platform,
+    })
     .from(devicePushTokens)
     .where(
       and(
@@ -44,7 +49,9 @@ async function main(): Promise<void> {
     );
 
   if (tokens.length === 0) {
-    console.error(`Nenhum token ativo para ${email}. Abra o app do contato e aceite notificações.`);
+    console.error(
+      `Nenhum token ativo para ${email}. Abra o app do contato e aceite notificações.`,
+    );
     process.exit(1);
   }
 

@@ -15,8 +15,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -125,7 +125,9 @@ export function RegisterScreen({ navigation }: Props) {
             source={require("../../assets/login/Icon.png")}
             style={[styles.logoImage, responsiveStyles.logoImage]}
           />
-          <Text style={[styles.title, responsiveStyles.title]}>Criar conta</Text>
+          <Text style={[styles.title, responsiveStyles.title]}>
+            Criar conta
+          </Text>
           <Text style={[styles.subtitle, responsiveStyles.subtitle]}>
             Cadastre-se e proteja quem você ama
           </Text>

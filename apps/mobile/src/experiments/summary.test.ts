@@ -56,8 +56,18 @@ describe("summarizeExperimentEvents", () => {
   it("calcula a média de tempo entre múltiplas conversões", () => {
     const events: StoredExperimentEvent[] = [
       exposure("sos_button_layout", "large_button"),
-      conversion("sos_button_layout", "large_button", "sos_time_to_trigger", 1000),
-      conversion("sos_button_layout", "large_button", "sos_time_to_trigger", 3000),
+      conversion(
+        "sos_button_layout",
+        "large_button",
+        "sos_time_to_trigger",
+        1000,
+      ),
+      conversion(
+        "sos_button_layout",
+        "large_button",
+        "sos_time_to_trigger",
+        3000,
+      ),
     ];
 
     const [summary] = summarizeExperimentEvents(events);
