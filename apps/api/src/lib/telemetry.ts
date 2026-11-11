@@ -14,7 +14,9 @@ export type AlertTelemetryEvent =
   | "push_sent"
   | "push_failed"
   | "push_skipped_no_tokens"
-  | "escalation_triggered";
+  | "escalation_triggered"
+  | "audio_chunk_received"
+  | "audio_chunk_rejected";
 
 export type AlertTelemetryFields = {
   alertId?: string;
