@@ -57,12 +57,10 @@ export {
 } from "./devices.js";
 export {
   DashboardDailyActivationSchema,
-  DashboardFrequentLocationSchema,
   DashboardFrequentPlaceSchema,
   DashboardRecentAlertSchema,
   DashboardResponseSchema,
   type DashboardDailyActivation,
-  type DashboardFrequentLocation,
   type DashboardFrequentPlace,
   type DashboardRecentAlert,
   type DashboardResponse,

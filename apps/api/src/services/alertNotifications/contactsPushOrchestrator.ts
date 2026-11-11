@@ -25,7 +25,7 @@ export function createAlertContactsPushOrchestrator(
         provider,
         alertId,
         "alert_started",
-        "high",
+        "normal",
       );
     },
 

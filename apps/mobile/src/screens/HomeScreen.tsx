@@ -24,11 +24,8 @@ import { useAuth } from "../auth/AuthContext";
 import { useEspButtonBleState } from "../ble/EspButtonBleContext";
 import { resolveSosCircleScale, useSosExperiment } from "../experiments";
 import { formatApiError } from "../lib/apiError";
+import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import type { AppStackParamList } from "../navigation/types";
-import {
-  scheduleAlertStartedNotification,
-  setupLocalAlertNotifications,
-} from "../notifications/localAlerts";
 import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Home">;
@@ -93,10 +90,6 @@ export function HomeScreen({ navigation }: Props) {
     }, [refreshActive]),
   );
 
-  useEffect(() => {
-    void setupLocalAlertNotifications();
-  }, []);
-
   const startAlert = useCallback(async () => {
     if (activeAlertId) {
       navigation.navigate("ActiveAlert", { alertId: activeAlertId });
@@ -126,9 +119,8 @@ export function HomeScreen({ navigation }: Props) {
       }
       trackConversion("sos_time_to_trigger");
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
-      await scheduleAlertStartedNotification(
-        "Alerta visível iniciado. Seus contatos estão sendo notificados.",
-      );
+      // Inicia o streaming de GPS na hora, sem esperar o polling de ~25s.
+      requestLocationSyncNow();
       navigation.navigate("ActiveAlert", { alertId: body.data.alert.id });
     } finally {
       setLoading(false);

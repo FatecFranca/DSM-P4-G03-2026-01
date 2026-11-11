@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import cors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
@@ -15,6 +16,15 @@ import { createAlertContactsPushNotifier } from "./services/alertNotifications/f
 import { createEmergencyInviteEmailSender } from "./services/email/factory.js";
 
 const STATIC_DIR = resolve(join(import.meta.dirname, "..", "..", "..", "web"));
+
+function readCorsOrigins(): string[] | false {
+  const raw = process.env.CORS_ORIGINS ?? "";
+  const origins = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return origins.length > 0 ? origins : false;
+}
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -53,7 +63,7 @@ export async function buildServer() {
   }
 
   await app.register(cors, {
-    origin: true,
+    origin: readCorsOrigins(),
     credentials: true,
   });
 
@@ -142,7 +152,7 @@ export async function buildServer() {
     const ext = extname(filePath).toLowerCase();
     const contentType = MIME[ext] || "application/octet-stream";
     reply.type(contentType);
-    return reply.send(readFileSync(filePath));
+    return reply.send(await readFile(filePath));
   });
 
   // Redirect root web requests to the dashboard

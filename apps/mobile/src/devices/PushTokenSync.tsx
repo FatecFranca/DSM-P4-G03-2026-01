@@ -60,9 +60,12 @@ async function registerPushToken(accessToken: string): Promise<void> {
 }
 
 function getStringDataValue(
-  data: Record<string, unknown>,
+  data: Record<string, unknown> | null | undefined,
   key: string,
 ): string | null {
+  if (!data) {
+    return null;
+  }
   const value = data[key];
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
@@ -143,10 +146,10 @@ export function PushTokenSync() {
         const Notifications = await import("expo-notifications");
         subscription = Notifications.addNotificationResponseReceivedListener(
           (response) => {
-            const data = response.notification.request.content.data as Record<
-              string,
-              unknown
-            >;
+            const data = response.notification.request.content.data as
+              | Record<string, unknown>
+              | null
+              | undefined;
             const alertId = getStringDataValue(data, "alertId");
             if (data?.kind !== "alert_started" || !alertId) {
               return;

@@ -1,12 +1,8 @@
-import { ListAlertLocationsResponseSchema } from "@protecther/contracts";
-import { useFocusEffect } from "@react-navigation/native";
+import { AckAlertResponseSchema } from "@protecther/contracts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,12 +10,12 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
+import { AlertLocationMap } from "../location/AlertLocationMap";
 import type { AppStackParamList } from "../navigation/types";
-import { Radius, Shadow, Spacing } from "../theme";
+import { Radius, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "ContactAlertDetail">;
 
@@ -30,94 +26,10 @@ export function ContactAlertDetailScreen({ route }: Props) {
   const isSmallScreen = height < 700 || width < 360;
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const { getAccessToken } = useAuth();
-  const [points, setPoints] = useState<
-    { id: string; lat: number; lng: number; capturedAt: string }[]
-  >([]);
-  const sinceRef = useRef<string | null>(null);
-  const initialRef = useRef(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [mapTouching, setMapTouching] = useState(false);
-  const webViewRef = useRef<WebView>(null);
-  const [mapHtml, setMapHtml] = useState<string | null>(null);
-  const mapInit = useRef(false);
-
-  const fetchIncremental = useCallback(async () => {
-    const token = getAccessToken();
-    const path = initialRef.current
-      ? `/alerts/${encodeURIComponent(alertId)}/locations`
-      : `/alerts/${encodeURIComponent(alertId)}/locations?since=${encodeURIComponent(
-          sinceRef.current ?? startedAt,
-        )}`;
-    const result = await apiFetchJson<unknown>(path, {
-      method: "GET",
-      accessToken: token,
-    });
-    if (!result.ok) {
-      setError(formatApiError(result.body));
-      return;
-    }
-    const parsed = ListAlertLocationsResponseSchema.safeParse(result.data);
-    if (!parsed.success) {
-      setError("Resposta inválida da API");
-      return;
-    }
-    setError(null);
-    if (initialRef.current) {
-      initialRef.current = false;
-    }
-    if (parsed.data.points.length > 0) {
-      setPoints((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        const merged = [...prev];
-        for (const p of parsed.data.points) {
-          if (!seen.has(p.id)) {
-            merged.push({
-              id: p.id,
-              lat: p.lat,
-              lng: p.lng,
-              capturedAt: p.capturedAt,
-            });
-            seen.add(p.id);
-          }
-        }
-        return merged.sort(
-          (a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt),
-        );
-      });
-      const last = parsed.data.points[parsed.data.points.length - 1];
-      sinceRef.current = last.capturedAt;
-    } else if (sinceRef.current === null) {
-      sinceRef.current = startedAt;
-    }
-  }, [alertId, getAccessToken, startedAt]);
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void fetchIncremental().finally(() => setLoading(false));
-      const timer = setInterval(() => {
-        void fetchIncremental();
-      }, 5000);
-      return () => {
-        clearInterval(timer);
-      };
-    }, [fetchIncremental]),
-  );
-
-  const last = points.length > 0 ? points[points.length - 1] : null;
-
-  useEffect(() => {
-    if (!last) return;
-    if (!mapInit.current) {
-      mapInit.current = true;
-      setMapHtml(generateMapHtml(last.lat, last.lng));
-    } else {
-      webViewRef.current?.injectJavaScript(
-        `moveMarker(${last.lat}, ${last.lng})`,
-      );
-    }
-  }, [last]);
+  const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
+  const [ackError, setAckError] = useState<string | null>(null);
+  const ackAttempted = useRef(false);
 
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
@@ -126,6 +38,35 @@ export function ContactAlertDetailScreen({ route }: Props) {
       minute: "2-digit",
     })}`;
   };
+
+  // Ao abrir o alerta (pela notificação ou pelo "Ver localização em tempo
+  // real"), confirma automaticamente o recebimento. O endpoint é idempotente:
+  // chamadas repetidas retornam o mesmo `acknowledgedAt`.
+  useEffect(() => {
+    if (ackAttempted.current) return;
+    ackAttempted.current = true;
+
+    void (async () => {
+      try {
+        const result = await apiFetchJson<unknown>(
+          `/alerts/${encodeURIComponent(alertId)}/ack`,
+          { method: "POST", accessToken: getAccessToken() },
+        );
+        if (!result.ok) {
+          setAckError(formatApiError(result.body));
+          return;
+        }
+        const parsed = AckAlertResponseSchema.safeParse(result.data);
+        if (!parsed.success) {
+          setAckError("Resposta inválida da API");
+          return;
+        }
+        setConfirmedAt(parsed.data.acknowledgedAt);
+      } catch {
+        setAckError("Não foi possível confirmar o recebimento");
+      }
+    })();
+  }, [alertId, getAccessToken]);
 
   return (
     <View style={styles.flex}>
@@ -137,6 +78,7 @@ export function ContactAlertDetailScreen({ route }: Props) {
 
       <ScrollView
         style={styles.scroll}
+        scrollEnabled={!mapTouching}
         contentContainerStyle={[
           styles.container,
           {
@@ -147,7 +89,6 @@ export function ContactAlertDetailScreen({ route }: Props) {
             alignSelf: "center",
           },
         ]}
-        scrollEnabled={!mapTouching}
       >
         <Text style={styles.brand}>Protect Her</Text>
         <Text
@@ -162,90 +103,25 @@ export function ContactAlertDetailScreen({ route }: Props) {
           </Text>
         </View>
 
-        {loading && points.length === 0 ? (
-          <View style={styles.mapPlaceholder}>
-            <ActivityIndicator color="#DA8295" size="large" />
-            <Text style={styles.mapLoading}>Carregando localização...</Text>
-          </View>
-        ) : mapHtml && last ? (
-          <View
-            style={styles.mapContainer}
-            onTouchStart={() => setMapTouching(true)}
-            onTouchEnd={() => setMapTouching(false)}
-            onTouchCancel={() => setMapTouching(false)}
-          >
-            <WebView
-              ref={webViewRef}
-              source={{ html: mapHtml }}
-              style={styles.map}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              originWhitelist={["*"]}
-            />
-            <Pressable
-              style={({ pressed }) => [
-                styles.centerBtn,
-                pressed && styles.pressed,
-              ]}
-              onPress={() =>
-                webViewRef.current?.injectJavaScript("centerMap()")
-              }
-            >
-              <Text style={styles.centerBtnText}>Centralizar</Text>
-            </Pressable>
-            <View style={styles.mapOverlay}>
-              <Text style={styles.mapOverlayText}>
-                {points.length} ponto{points.length !== 1 ? "s" : ""} capturado
-                {points.length !== 1 ? "s" : ""}
-              </Text>
-            </View>
-          </View>
-        ) : null}
+        <AlertLocationMap
+          alertId={alertId}
+          startedAt={startedAt}
+          onMapTouchChange={setMapTouching}
+        />
 
-        {!last ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIcon}>
-              <Text style={styles.emptyIconText}>i</Text>
-            </View>
-            <Text style={styles.pointsTitle}>Aguardando localização</Text>
-            <Text style={styles.pointsEmpty}>
-              Ainda não recebemos pontos da titular para exibir no mapa.
+        {confirmedAt ? (
+          <View style={styles.ackConfirmed}>
+            <Text style={styles.ackConfirmedTitle}>Recebimento confirmado</Text>
+            <Text style={styles.ackConfirmedText}>
+              Confirmado em {formatDateTime(confirmedAt)}
             </Text>
           </View>
         ) : null}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {ackError ? <Text style={styles.ackError}>{ackError}</Text> : null}
       </ScrollView>
     </View>
   );
-}
-
-function generateMapHtml(lat: number, lng: number): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    *{margin:0;padding:0}
-    html,body,#map{width:100%;height:100%}
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script>
-    var map=L.map('map',{zoomControl:true}).setView([${lat},${lng}],17);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      maxZoom:19,
-      attribution:'&copy; OpenStreetMap'
-    }).addTo(map);
-    var marker=L.marker([${lat},${lng}]).addTo(map);
-    function moveMarker(a,b){marker.setLatLng([a,b])}
-    function centerMap(){map.setView(marker.getLatLng(),map.getZoom())}
-  </script>
-</body>
-</html>`;
 }
 
 const styles = StyleSheet.create({
@@ -305,105 +181,33 @@ const styles = StyleSheet.create({
     color: "#55383E",
     textAlign: "center",
   },
-  mapContainer: {
-    borderRadius: Radius.lg,
-    overflow: "hidden",
+  ackConfirmed: {
+    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: "#E8B8C0",
-    ...Shadow.md,
+    backgroundColor: "rgba(255,208,225,0.4)",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
   },
-  map: {
-    height: Dimensions.get("window").height * 0.62,
+  ackConfirmedTitle: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 15,
+    color: "#55383E",
+    textAlign: "center",
   },
-  mapOverlay: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: "#E8B8C0",
-  },
-  mapOverlayText: {
+  ackConfirmedText: {
     fontFamily: "Poppins_400Regular",
     fontSize: 13,
     color: "#55383E",
     textAlign: "center",
   },
-  centerBtn: {
-    position: "absolute",
-    bottom: 66,
-    right: 12,
-    minHeight: 36,
-    borderRadius: Radius.full,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#DA8295",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    ...Shadow.md,
-  },
-  centerBtnText: {
-    fontFamily: "Poppins_500Medium",
-    fontSize: 12,
-    color: "#DA8295",
-  },
-  mapPlaceholder: {
-    height: 200,
-    borderRadius: Radius.lg,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E8B8C0",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.md,
-  },
-  mapLoading: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
-    color: "#7A5A60",
-  },
-  emptyCard: {
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: "#E8B8C0",
-    backgroundColor: "rgba(255,208,225,0.35)",
-    padding: 16,
-    alignItems: "center",
-    gap: 8,
-  },
-  emptyIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#DA8295",
-  },
-  emptyIconText: {
-    fontFamily: "Poppins_700Bold",
-    fontSize: 18,
-    color: "#FFFFFF",
-  },
-  pointsTitle: {
-    fontFamily: "Poppins_600SemiBold",
-    fontSize: 18,
-    color: "#55383E",
-    textAlign: "center",
-  },
-  pointsEmpty: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#55383E",
-    textAlign: "center",
-  },
-  error: {
+  ackError: {
     fontFamily: "Poppins_400Regular",
     fontSize: 14,
     color: "#B12E58",
     textAlign: "center",
-  },
-  pressed: {
-    opacity: 0.85,
   },
 });

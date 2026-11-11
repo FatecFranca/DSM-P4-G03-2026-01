@@ -11,5 +11,8 @@ apps/api/firebase-service-account.json
 apps/mobile/*firebase-adminsdk*.json
 *.tsbuildinfo
 /android/.gradle
-/android/.gradle
 /android/build
+**/.cxx/
+**/compile_commands.json
+android/local.properties
+android/.idea/

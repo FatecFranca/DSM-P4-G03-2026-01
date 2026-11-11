@@ -3,6 +3,7 @@ import {
   RegisterBleDeviceResponseSchema,
   RegisterPushTokenRequestSchema,
   RegisterPushTokenResponseSchema,
+  UnregisterBleDeviceParamsSchema,
   UnregisterBleDeviceResponseSchema,
 } from "@protecther/contracts";
 import { and, eq } from "drizzle-orm";
@@ -155,7 +156,14 @@ export async function registerDeviceRoutes(
         .send(apiError("UNAUTHORIZED", "Missing authentication"));
     }
 
-    const { deviceId } = request.params as { deviceId: string };
+    const params = UnregisterBleDeviceParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply
+        .status(400)
+        .send(apiError("VALIDATION_ERROR", params.error.message));
+    }
+
+    const deviceId = params.data.deviceId;
 
     const existing = await db
       .select()

@@ -208,6 +208,48 @@ a {
   letter-spacing: -0.03em;
 }
 
+.panel-head {
+  position: relative;
+}
+
+.panel-head .panel-title {
+  margin-bottom: 18px;
+}
+
+.refresh-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 9px 18px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #de97a2 0%, #d98c96 100%);
+  color: var(--white);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(208, 98, 124, 0.2);
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1), box-shadow 220ms
+    ease, opacity 220ms ease;
+}
+
+.refresh-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(208, 98, 124, 0.26);
+}
+
+.refresh-btn:active {
+  transform: translateY(0);
+}
+
+.refresh-btn:disabled,
+.refresh-btn.is-pending {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -275,7 +317,7 @@ a {
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
   align-items: stretch;
 }
@@ -671,6 +713,16 @@ html {
     font-size: 24px;
   }
 
+  .refresh-btn {
+    position: static;
+    display: block;
+    margin: -6px auto 18px;
+  }
+
+  .panel-head .panel-title {
+    margin-bottom: 10px;
+  }
+
   .stat-card,
   .chart-card {
     min-height: auto;
@@ -846,4 +898,143 @@ html {
   min-height: auto;
   padding: 16px 18px;
   align-items: start;
+}
+
+/* ── Bairros mais acionados (ranking) ── */
+.neighborhood-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nb-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 252, 253, 0.98);
+  box-shadow: var(--soft-shadow);
+}
+
+.nb-rank {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f6c4cf;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.nb-item:nth-child(-n + 3) .nb-rank {
+  background: linear-gradient(180deg, #de97a2 0%, #d98c96 100%);
+  box-shadow: 0 6px 12px rgba(208, 98, 124, 0.24);
+}
+
+.nb-item--hidden {
+  display: none;
+}
+
+.nb-toggle-item {
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
+}
+
+.nb-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 99px;
+  background: rgba(255, 252, 253, 0.98);
+  box-shadow: var(--soft-shadow);
+  color: #c17986;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.2, 1), box-shadow 220ms
+    ease;
+}
+
+.nb-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(208, 98, 124, 0.2);
+}
+
+.nb-toggle-arrow {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.nb-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.nb-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nb-name {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.95rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nb-count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+.nb-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: #f4e1e7;
+  overflow: hidden;
+}
+
+.nb-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #e79aa9 0%, #d98c96 100%);
+}
+
+.nb-pct {
+  flex: 0 0 auto;
+  width: 52px;
+  text-align: right;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.nb-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.95rem;
 }

@@ -597,13 +597,27 @@ export async function registerAlertRoutes(
 
     const endedAt = new Date();
 
+    // Se `pin` presente e não vazio (após trim), o cancelamento é por coação:
+    // encerra o alerta normalmente, mas marca risco alto e motivo `duress`.
+    const duress = (bodyParsed.data.pin ?? "").length > 0;
+    const riskLevel = duress ? ("high" as const) : row.riskLevel;
+    const cancelReason = duress ? ("duress" as const) : null;
+    const auditEvent = duress
+      ? ("cancelled_duress" as const)
+      : ("cancelled" as const);
+
+    if (duress) {
+      logAlertTelemetry(request.log, "alert_cancel_duress", { alertId });
+    }
+
     const [updated] = await db.transaction(async (tx) => {
       const [u] = await tx
         .update(alerts)
         .set({
           status: "closed",
           endedAt,
-          cancelReason: null,
+          riskLevel,
+          cancelReason,
         })
         .where(eq(alerts.id, alertId))
         .returning();
@@ -612,8 +626,8 @@ export async function registerAlertRoutes(
         await tx.insert(alertAuditEvents).values({
           alertId,
           actorUserId: userId,
-          event: "cancelled",
-          payload: { riskLevel: row.riskLevel },
+          event: auditEvent,
+          payload: { riskLevel },
         });
       }
 

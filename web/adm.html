@@ -37,7 +37,12 @@
           class="panel panel-summary"
           aria-labelledby="dados-gerais-title"
         >
-          <h1 class="panel-title" id="dados-gerais-title">Dados gerais</h1>
+          <div class="panel-head">
+            <h1 class="panel-title" id="dados-gerais-title">Dados gerais</h1>
+            <button id="refresh-btn" class="refresh-btn" type="button">
+              Atualizar
+            </button>
+          </div>
 
           <div class="summary-grid">
             <article class="stat-card">
@@ -79,7 +84,7 @@
                 </svg>
               </div>
               <div class="stat-body">
-                <h2>Tempo médio de chegada</h2>
+                <h2>Tempo médio de verificação do alerta</h2>
                 <strong id="stat-avg-arrival">—</strong>
               </div>
               <span class="stat-blob" aria-hidden="true"></span>
@@ -125,33 +130,6 @@
                 <span class="chart-mark" aria-hidden="true">
                   <svg viewBox="0 0 24 24" role="presentation">
                     <path
-                      d="M12 3a9 9 0 1 0 9 9"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                    />
-                    <path
-                      d="M12 12l6-6"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.8"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                </span>
-                <h2>Regiões mais frequentes</h2>
-              </div>
-              <div class="chart-canvas-wrap">
-                <canvas id="chart-donut" aria-label="Gráfico de regiões mais frequentes"></canvas>
-              </div>
-            </article>
-
-            <article class="chart-card">
-              <div class="chart-head">
-                <span class="chart-mark" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" role="presentation">
-                    <path
                       d="M3 9l9-6 9 6v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9Z"
                       fill="none"
                       stroke="currentColor"
@@ -167,11 +145,9 @@
                     />
                   </svg>
                 </span>
-                <h2>Bairros mais frequentes</h2>
+                <h2>Bairros mais acionados</h2>
               </div>
-              <div class="chart-canvas-wrap">
-                <canvas id="chart-neighborhoods" aria-label="Gráfico de bairros mais frequentes"></canvas>
-              </div>
+              <ol id="neighborhood-list" class="neighborhood-list"></ol>
             </article>
           </div>
         </section>
@@ -194,7 +170,7 @@
               <div role="columnheader">Data</div>
               <div role="columnheader">Hora</div>
               <div role="columnheader">Localização</div>
-              <div role="columnheader">Tempo de chegada</div>
+              <div role="columnheader">Tempo de verificação</div>
             </div>
             <div id="table-body"></div>
           </div>

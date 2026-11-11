@@ -18,6 +18,27 @@ function jitterMs(base: number): number {
   return base + Math.floor(Math.random() * Math.min(2000, base));
 }
 
+/**
+ * Normaliza o `capturedAt` a partir do timestamp do GPS.
+ *
+ * No emulador (e em aparelhos com GPS frio), o `loc.timestamp` pode vir
+ * "congelado" — com um horário bem anterior ao início do alerta. O servidor
+ * rejeita `capturedAt` anterior ao `started_at` do alerta (janela de 120s),
+ * o que faria o ponto ficar preso na fila para sempre. Aqui limitamos o
+ * timestamp ao intervalo [now - 120s, now + 60s]; fora disso usamos "agora".
+ */
+const MAX_STALE_MS = 120_000;
+const MAX_FUTURE_MS = 60_000;
+
+export function safeCapturedAt(timestampMs: number): string {
+  const now = Date.now();
+  const ts = Number.isFinite(timestampMs) ? timestampMs : now;
+  if (now - ts > MAX_STALE_MS || ts - now > MAX_FUTURE_MS) {
+    return new Date(now).toISOString();
+  }
+  return new Date(ts).toISOString();
+}
+
 export function makeLocationDedupeKey(
   lat: number,
   lng: number,
@@ -109,7 +130,7 @@ export async function flushLocationQueue(
             accuracy: item.accuracy,
             speed: item.speed,
             heading: item.heading,
-            capturedAt: item.capturedAt,
+            capturedAt: safeCapturedAt(Date.parse(item.capturedAt)),
           }),
           accessToken: token,
         });

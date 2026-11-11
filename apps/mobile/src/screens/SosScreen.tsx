@@ -4,7 +4,7 @@ import {
 } from "@protecther/contracts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -22,10 +22,6 @@ import { resolveSosButtonPresentation, useSosExperiment } from "../experiments";
 import { formatApiError } from "../lib/apiError";
 import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import type { AppStackParamList } from "../navigation/types";
-import {
-  scheduleAlertStartedNotification,
-  setupLocalAlertNotifications,
-} from "../notifications/localAlerts";
 import { Radius, Shadow, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Sos">;
@@ -40,10 +36,6 @@ export function SosScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const { variantId, trackConversion } = useSosExperiment();
   const buttonPresentation = resolveSosButtonPresentation(variantId);
-
-  useEffect(() => {
-    void setupLocalAlertNotifications();
-  }, []);
 
   const startAlert = async (mode: "visible" | "discreet") => {
     setError(null);
@@ -72,9 +64,6 @@ export function SosScreen({ navigation }: Props) {
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
       // Inicia o streaming de GPS na hora, sem esperar o polling de ~25s.
       requestLocationSyncNow();
-      await scheduleAlertStartedNotification(
-        `Alerta ${mode === "visible" ? "visível" : "discreto"} iniciado. Seus contatos estão sendo notificados.`,
-      );
       navigation.replace("ActiveAlert", { alertId: body.data.alert.id });
     } finally {
       setLoading(false);

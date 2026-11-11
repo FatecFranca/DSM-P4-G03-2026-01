@@ -11,7 +11,7 @@ import {
 
 const RECENT_ALERTS_LIMIT = 20;
 const DAILY_ACTIVATIONS_DAYS = 30;
-const FREQUENT_LOCATIONS_LIMIT = 4;
+const NEIGHBORHOOD_TOP_LIMIT = 20;
 const GEOCODE_CLUSTER_LIMIT = 40;
 
 type NominatimAddress = Record<string, string>;
@@ -19,6 +19,7 @@ type NominatimAddress = Record<string, string>;
 type GeocodeDetails = {
   displayLabel: string | null;
   city: string | null;
+  state: string | null;
   neighborhood: string | null;
 };
 
@@ -36,6 +37,10 @@ function extractCity(address: NominatimAddress): string | null {
     address.village ??
     null
   );
+}
+
+function extractState(address: NominatimAddress): string | null {
+  return address.state ?? address.region ?? null;
 }
 
 /**
@@ -80,6 +85,48 @@ function buildDisplayLabel(
   return relevant.slice(0, 3).join(", ") || displayName;
 }
 
+/**
+ * Monta o rótulo "Bairro — Cidade, Estado" para a lista de bairros.
+ * Remove duplicação quando cidade e estado têm o mesmo nome (ex.: São Paulo).
+ */
+function buildNeighborhoodLabel(details: GeocodeDetails): string | null {
+  const neighborhood = details.neighborhood?.trim();
+  if (!neighborhood) return null;
+
+  const location = [details.city, details.state]
+    .filter((v): v is string => Boolean(v?.trim()))
+    .map((v) => v.trim())
+    .filter((v, i, arr) => arr.indexOf(v) === i);
+
+  return location.length > 0
+    ? `${neighborhood} — ${location.join(", ")}`
+    : neighborhood;
+}
+
+/**
+ * O Nominatim (OpenStreetMap) permite ~1 requisição/segundo para uso público.
+ * As chamadas em paralelo (Promise.all) disparavam várias de uma vez, causando
+ * 429/timeout e fazendo o reverse geocode retornar null — o que derrubava o
+ * nome da rua na tabela (caía para o fallback de coordenadas). Este throttle
+ * serializa as chamadas respeitando esse limite.
+ */
+const NOMINATIM_MIN_INTERVAL_MS = 1100;
+let lastNominatimRequestAt = 0;
+
+async function fetchNominatim(url: URL): Promise<Response> {
+  const elapsed = Date.now() - lastNominatimRequestAt;
+  if (elapsed < NOMINATIM_MIN_INTERVAL_MS) {
+    await new Promise((resolve) =>
+      setTimeout(resolve, NOMINATIM_MIN_INTERVAL_MS - elapsed),
+    );
+  }
+  lastNominatimRequestAt = Date.now();
+  return fetch(url.toString(), {
+    headers: { "User-Agent": "ProtectHer-API/1.0" },
+    signal: AbortSignal.timeout(5000),
+  });
+}
+
 async function reverseGeocodeDetails(
   lat: number,
   lng: number,
@@ -98,10 +145,7 @@ async function reverseGeocodeDetails(
     url.searchParams.set("addressdetails", "1");
     url.searchParams.set("accept-language", "pt-BR");
 
-    const res = await fetch(url.toString(), {
-      headers: { "User-Agent": "ProtectHer-API/1.0" },
-      signal: AbortSignal.timeout(3000),
-    });
+    const res = await fetchNominatim(url);
 
     if (!res.ok) {
       geocodeCache.set(key, null);
@@ -122,6 +166,7 @@ async function reverseGeocodeDetails(
     const details: GeocodeDetails = {
       displayLabel: buildDisplayLabel(displayName, address),
       city: extractCity(address),
+      state: extractState(address),
       neighborhood: extractNeighborhood(address),
     };
     geocodeCache.set(key, details);
@@ -267,40 +312,10 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         .map(([date, cnt]) => ({ date, count: cnt }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-      // 7. Frequent locations
-      const freqRows = await db.execute<{
-        lat: number;
-        lng: number;
-        count: number;
-      }>(
-        sql`SELECT ROUND(al.lat::numeric, 3) AS lat,
-                   ROUND(al.lng::numeric, 3) AS lng,
-                   COUNT(*)::int AS count
-            FROM ${alertLocations} al
-            GROUP BY ROUND(al.lat::numeric, 3), ROUND(al.lng::numeric, 3)
-            ORDER BY count DESC
-            LIMIT ${FREQUENT_LOCATIONS_LIMIT}`,
-      );
-
-      const locationLabels = [
-        "Região Centro",
-        "Região Norte",
-        "Região Sul",
-        "Região Leste",
-      ];
-      const totalFreq = freqRows.reduce((sum, r) => sum + r.count, 0);
-      const frequentLocations = freqRows.map((row, i) => ({
-        label: locationLabels[i] ?? `Região ${i + 1}`,
-        lat: Number(row.lat),
-        lng: Number(row.lng),
-        count: row.count,
-        percentage:
-          totalFreq > 0 ? Math.round((row.count / totalFreq) * 10000) / 100 : 0,
-      }));
-
+      // 7. Bairros mais acionados (rótulo "Bairro — Cidade, Estado").
       // Primeira localização de cada alerta (igual à tabela de estatísticas).
       // Rastreamento contínuo gera centenas de pings; um desvio de GPS não deve
-      // criar um bairro fantasma no gráfico (ex.: Luíza II com 1 ping).
+      // criar um bairro fantasma na lista (ex.: Luíza II com 1 ping).
       const clusterRows = await db.execute<{
         lat: number;
         lng: number;
@@ -334,14 +349,15 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
           const lng = Number(row.lng);
           if (lat === 0 && lng === 0) return;
           const details = await reverseGeocodeDetails(lat, lng);
-          if (!details?.neighborhood) return;
-          addPlaceCount(neighborhoodCounts, details.neighborhood, row.count);
+          const label = details ? buildNeighborhoodLabel(details) : null;
+          if (!label) return;
+          addPlaceCount(neighborhoodCounts, label, row.count);
         }),
       );
 
       const frequentNeighborhoods = buildTopFrequentPlaces(
         neighborhoodCounts,
-        FREQUENT_LOCATIONS_LIMIT,
+        NEIGHBORHOOD_TOP_LIMIT,
         "Bairro desconhecido",
       );
 
@@ -367,6 +383,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
               SELECT al2.lat, al2.lng
               FROM ${alertLocations} al2
               WHERE al2.alert_id = a.id
+                AND (al2.lat <> 0 OR al2.lng <> 0)
               ORDER BY al2.captured_at ASC
               LIMIT 1
             ) al ON true
@@ -413,7 +430,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         activeAlertsCount,
         totalUsers,
         dailyActivations,
-        frequentLocations,
         frequentNeighborhoods,
         recentAlerts: recentAlertsOut,
       });

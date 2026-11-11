@@ -11,7 +11,12 @@
       "**/dist/**",
       "**/.expo/**",
       "**/android/build/**",
+      "**/android/app/build/**",
       "**/android/.gradle/**",
+      "**/android/app/.cxx/**",
+      "**/android/.idea/**",
+      "apps/mobile/android/**",
+      "**/compile_commands.json",
       "pnpm-lock.yaml",
       "**/drizzle/**"
     ]

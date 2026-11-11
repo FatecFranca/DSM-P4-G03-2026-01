@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "689100746729",
-    "project_id": "protecther-e7a7f",
-    "storage_bucket": "protecther-e7a7f.firebasestorage.app"
+    "project_number": "475759428098",
+    "project_id": "protecther-51350",
+    "storage_bucket": "protecther-51350.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:689100746729:android:7bdf545b9454d61bb7a578",
+        "mobilesdk_app_id": "1:475759428098:android:cfd91fe9c30d3430a71d1b",
         "android_client_info": {
           "package_name": "com.protecther.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBSoUBqRuyOa_6X4QVo9PbAJsyG_ocYLOc"
+          "current_key": "AIzaSyDzjGsYaxTaA4cNfZD2FtuSV0ooRmMR7i4"
         }
       ],
       "services": {

@@ -4,7 +4,11 @@ import type * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import { readSession } from "../auth/sessionStorage";
 import { logMobileTelemetry } from "../lib/telemetry";
-import { makeLocationDedupeKey, sendLocationOrQueue } from "./locationQueue";
+import {
+  makeLocationDedupeKey,
+  safeCapturedAt,
+  sendLocationOrQueue,
+} from "./locationQueue";
 import { ACTIVE_ALERT_ID_STORAGE_KEY } from "./locationTaskNames";
 
 export const BACKGROUND_LOCATION_TASK = "protecther-bg-location";
@@ -48,7 +52,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
       loc.coords.heading >= 0
         ? loc.coords.heading
         : undefined,
-    capturedAt: new Date(loc.timestamp).toISOString(),
+    capturedAt: safeCapturedAt(loc.timestamp),
   };
   const valid = PostAlertLocationRequestSchema.safeParse(body);
   if (!valid.success) {

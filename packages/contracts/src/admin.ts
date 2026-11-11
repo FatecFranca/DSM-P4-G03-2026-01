@@ -11,18 +11,6 @@ export type DashboardDailyActivation = z.infer<
   typeof DashboardDailyActivationSchema
 >;
 
-export const DashboardFrequentLocationSchema = z.object({
-  label: z.string(),
-  lat: z.number(),
-  lng: z.number(),
-  count: z.number().int().nonnegative(),
-  percentage: z.number().min(0).max(100),
-});
-
-export type DashboardFrequentLocation = z.infer<
-  typeof DashboardFrequentLocationSchema
->;
-
 export const DashboardFrequentPlaceSchema = z.object({
   label: z.string(),
   count: z.number().int().nonnegative(),
@@ -53,7 +41,6 @@ export const DashboardResponseSchema = z.object({
   activeAlertsCount: z.number().int().nonnegative(),
   totalUsers: z.number().int().nonnegative(),
   dailyActivations: z.array(DashboardDailyActivationSchema),
-  frequentLocations: z.array(DashboardFrequentLocationSchema),
   frequentNeighborhoods: z.array(DashboardFrequentPlaceSchema),
   recentAlerts: z.array(DashboardRecentAlertSchema),
 });

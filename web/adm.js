@@ -1,8 +1,9 @@
 (() => {
   // ── Config ───────────────────────────────────────────────────────────
   const API_BASE = window.location.origin;
-  const POLL_INTERVAL_MS = 30_000;
+  const POLL_INTERVAL_MS = 5_000;
   const RECENT_LIMIT = 15;
+  const NEIGHBORHOOD_VISIBLE_LIMIT = 5;
 
   // ── DOM refs ─────────────────────────────────────────────────────────
   const statusEl = document.getElementById("dashboard-status");
@@ -15,25 +16,15 @@
 
   const tableBody = document.getElementById("table-body");
   const tableEmpty = document.getElementById("table-empty");
+  const refreshBtn = document.getElementById("refresh-btn");
 
   const chartDailyCanvas = document.getElementById("chart-daily");
-  const chartDonutCanvas = document.getElementById("chart-donut");
-  const chartNeighborhoodsCanvas = document.getElementById(
-    "chart-neighborhoods",
-  );
+  const neighborhoodListEl = document.getElementById("neighborhood-list");
 
   let chartDaily = null;
-  const donutCharts = { locations: null, neighborhoods: null };
-
-  const DONUT_COLORS = [
-    "#f6b4c0",
-    "#d08fb8",
-    "#b77aa8",
-    "#ebb6d0",
-    "#c99ab8",
-    "#e8a4bc",
-  ];
   let pollTimer = null;
+  let lastNeighborhoodsKey = null;
+  let neighborhoodsExpanded = false;
 
   // ── Status helpers ───────────────────────────────────────────────────
   function showLoading() {
@@ -146,65 +137,94 @@
     });
   }
 
-  function renderDonutChart(canvas, frequent, chartKey) {
-    if (donutCharts[chartKey]) {
-      donutCharts[chartKey].destroy();
-      donutCharts[chartKey] = null;
-    }
+  function renderNeighborhoodList(neighborhoods) {
+    if (!neighborhoodListEl) return;
 
-    if (!canvas || !frequent || frequent.length === 0) {
+    if (!neighborhoods || neighborhoods.length === 0) {
+      neighborhoodsExpanded = false;
+      lastNeighborhoodsKey = null;
+      neighborhoodListEl.innerHTML =
+        '<li class="nb-empty">Nenhum bairro registrado ainda.</li>';
       return;
     }
 
-    const labels = frequent.map((f) => f.label);
-    const values = frequent.map((f) => f.count);
-    const percentages = frequent.map((f) => f.percentage);
-    const colors = DONUT_COLORS.slice(0, labels.length);
+    // Evita re-renderizar (e perder o estado expandir/recolher) quando o poll
+    // retorna exatamente os mesmos dados.
+    const key = JSON.stringify(neighborhoods);
+    if (key === lastNeighborhoodsKey) return;
+    lastNeighborhoodsKey = key;
 
-    donutCharts[chartKey] = new Chart(canvas, {
-      type: "doughnut",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            data: values,
-            backgroundColor: colors,
-            borderColor: "#fff6f9",
-            borderWidth: 3,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        cutout: "55%",
-        plugins: {
-          legend: {
-            position: "bottom",
-            labels: {
-              color: "#9a7a7e",
-              font: { size: 12, weight: "600" },
-              padding: 16,
-              usePointStyle: true,
-            },
-          },
-          tooltip: {
-            backgroundColor: "#fff6f9",
-            titleColor: "#5a3a3f",
-            bodyColor: "#5a3a3f",
-            borderColor: "#f3a7b9",
-            borderWidth: 1,
-            cornerRadius: 8,
-            callbacks: {
-              label: (ctx) => {
-                const idx = ctx.dataIndex;
-                return `${labels[idx]}: ${values[idx]} (${percentages[idx]}%)`;
-              },
-            },
-          },
-        },
-      },
-    });
+    const maxCount = neighborhoods[0]?.count ?? 0;
+    const hasMore = neighborhoods.length > NEIGHBORHOOD_VISIBLE_LIMIT;
+
+    const renderItem = (item, index, hidden) => {
+      // Barra proporcional ao maior da lista (não ao total), para dar
+      // contraste visual entre os bairros do ranking.
+      const barWidth =
+        maxCount > 0
+          ? Math.max(4, Math.round((item.count / maxCount) * 100))
+          : 0;
+      const hiddenClass = hidden ? " nb-item--hidden" : "";
+      return `
+        <li class="nb-item${hiddenClass}">
+          <span class="nb-rank">${index + 1}</span>
+          <div class="nb-main">
+            <div class="nb-top">
+              <span class="nb-name">${escapeHtml(item.label)}</span>
+              <span class="nb-count">${item.count} alerta${
+                item.count !== 1 ? "s" : ""
+              }</span>
+            </div>
+            <div class="nb-bar">
+              <span class="nb-bar-fill" style="width:${barWidth}%"></span>
+            </div>
+          </div>
+          <span class="nb-pct">${item.percentage}%</span>
+        </li>`;
+    };
+
+    const visible = neighborhoods.slice(0, NEIGHBORHOOD_VISIBLE_LIMIT);
+    const extra = neighborhoods.slice(NEIGHBORHOOD_VISIBLE_LIMIT);
+
+    let html = visible
+      .map((item, index) => renderItem(item, index, false))
+      .join("");
+
+    if (hasMore) {
+      html += extra
+        .map((item, index) =>
+          renderItem(
+            item,
+            NEIGHBORHOOD_VISIBLE_LIMIT + index,
+            !neighborhoodsExpanded,
+          ),
+        )
+        .join("");
+
+      html += `
+        <li class="nb-toggle-item">
+          <button type="button" class="nb-toggle" aria-expanded="${neighborhoodsExpanded}">
+            <span class="nb-toggle-label">${
+              neighborhoodsExpanded
+                ? "Mostrar menos"
+                : `Mostrar mais ${extra.length} bairros`
+            }</span>
+            <span class="nb-toggle-arrow" aria-hidden="true">${
+              neighborhoodsExpanded ? "▲" : "▼"
+            }</span>
+          </button>
+        </li>`;
+    }
+
+    neighborhoodListEl.innerHTML = html;
+
+    const toggle = neighborhoodListEl.querySelector(".nb-toggle");
+    if (toggle) {
+      toggle.addEventListener("click", () => {
+        neighborhoodsExpanded = !neighborhoodsExpanded;
+        renderNeighborhoodList(neighborhoods);
+      });
+    }
   }
 
   function renderTable(recent) {
@@ -262,7 +282,20 @@
 
   // ── Fetch ────────────────────────────────────────────────────────────
 
+  let fetchInFlight = false;
+
+  function setRefreshPending(pending) {
+    if (!refreshBtn) return;
+    refreshBtn.disabled = pending;
+    refreshBtn.classList.toggle("is-pending", pending);
+    refreshBtn.textContent = pending ? "Atualizando…" : "Atualizar";
+  }
+
   function fetchDashboard() {
+    if (fetchInFlight) return;
+    fetchInFlight = true;
+    setRefreshPending(true);
+
     fetch(`${API_BASE}/admin/dashboard`)
       .then((res) =>
         res.json().then((data) => {
@@ -279,12 +312,7 @@
         hideStatus();
         renderSummary(data);
         renderDailyChart(data.dailyActivations);
-        renderDonutChart(chartDonutCanvas, data.frequentLocations, "locations");
-        renderDonutChart(
-          chartNeighborhoodsCanvas,
-          data.frequentNeighborhoods || [],
-          "neighborhoods",
-        );
+        renderNeighborhoodList(data.frequentNeighborhoods || []);
         renderTable(data.recentAlerts);
       })
       .catch((err) => {
@@ -294,6 +322,10 @@
             ? err.message
             : `Não foi possível carregar os dados. Abra o painel em ${API_BASE}/adm e confira se a API está no ar (health: ${API_BASE}/health).`;
         showError(hint);
+      })
+      .finally(() => {
+        fetchInFlight = false;
+        setRefreshPending(false);
       });
   }
 
@@ -303,6 +335,9 @@
     showLoading();
     fetchDashboard();
     pollTimer = setInterval(fetchDashboard, POLL_INTERVAL_MS);
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", fetchDashboard);
+    }
   }
 
   function waitForChart(cb) {

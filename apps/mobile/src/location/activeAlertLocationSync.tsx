@@ -16,6 +16,7 @@ import {
   flushLocationQueue,
   getLocationQueueDepth,
   makeLocationDedupeKey,
+  safeCapturedAt,
   sendLocationOrQueue,
 } from "./locationQueue";
 import { onRequestLocationSync } from "./locationSyncTrigger";
@@ -23,6 +24,10 @@ import { ACTIVE_ALERT_ID_STORAGE_KEY } from "./locationTaskNames";
 
 const POLL_MS = 25_000;
 const STOP_STREAM_LOG_COOLDOWN_MS = 30_000;
+/** Distância mínima (m) entre pontos enviados, em foreground e background. */
+const LOCATION_DISTANCE_INTERVAL_M = 5;
+/** Tempo máximo esperando o primeiro fix imediato antes de tentar de novo. */
+const INITIAL_FIX_TIMEOUT_MS = 15_000;
 
 function fgIntervalMs(): number {
   const extra = Constants.expoConfig?.extra as
@@ -40,6 +45,22 @@ function bgIntervalMs(): number {
   return typeof v === "number" && v >= 5000 ? v : 15_000;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 async function persistActiveAlertId(alertId: string | null): Promise<void> {
   if (alertId) {
     await AsyncStorage.setItem(ACTIVE_ALERT_ID_STORAGE_KEY, alertId);
@@ -48,10 +69,55 @@ async function persistActiveAlertId(alertId: string | null): Promise<void> {
   }
 }
 
+/**
+ * Envia uma amostra de GPS de um alerta (valida e enfileira se necessário).
+ * Reaproveitada entre o `watchPositionAsync` e o primeiro fix imediato
+ * via `getCurrentPositionAsync`.
+ */
+async function sendLocationSample(
+  alertId: string,
+  loc: Location.LocationObject,
+  getAccessToken: () => string | null,
+): Promise<void> {
+  const token = getAccessToken();
+  if (!token) {
+    return;
+  }
+  const body = {
+    lat: loc.coords.latitude,
+    lng: loc.coords.longitude,
+    accuracy: loc.coords.accuracy ?? undefined,
+    speed:
+      loc.coords.speed != null &&
+      !Number.isNaN(loc.coords.speed) &&
+      loc.coords.speed >= 0
+        ? loc.coords.speed
+        : undefined,
+    heading:
+      loc.coords.heading != null &&
+      !Number.isNaN(loc.coords.heading) &&
+      loc.coords.heading >= 0
+        ? loc.coords.heading
+        : undefined,
+    capturedAt: safeCapturedAt(loc.timestamp),
+  };
+  const valid = PostAlertLocationRequestSchema.safeParse(body);
+  if (!valid.success) {
+    return;
+  }
+  const dedupeKey = makeLocationDedupeKey(
+    valid.data.lat,
+    valid.data.lng,
+    valid.data.capturedAt,
+  );
+  await sendLocationOrQueue(alertId, valid.data, dedupeKey, getAccessToken);
+}
+
 export function ActiveAlertLocationSync() {
   const { state, getAccessToken } = useAuth();
   const fgSub = useRef<Location.LocationSubscription | null>(null);
   const fgWatchAlertIdRef = useRef<string | null>(null);
+  const initialPointAlertIdRef = useRef<string | null>(null);
   const streamModeLoggedRef = useRef<string | null>(null);
   const lastQueueDepthLoggedRef = useRef(0);
   const syncInFlightRef = useRef(false);
@@ -85,12 +151,50 @@ export function ActiveAlertLocationSync() {
   }, []);
 
   const stopTracking = useCallback(async () => {
+    initialPointAlertIdRef.current = null;
     streamModeLoggedRef.current = null;
     lastQueueDepthLoggedRef.current = 0;
     stopForeground();
     await stopBackground();
     logStreamStoppedOnce();
   }, [logStreamStoppedOnce, stopBackground, stopForeground]);
+
+  /**
+   * Envia um ponto imediatamente ao detectar o alerta ativo, uma vez por
+   * alerta, sem esperar movimento nem o intervalo do stream. Funciona tanto
+   * no modo foreground quanto no background. Tenta primeiro a última posição
+   * conhecida (rápida, sem aguardar fix) e, se indisponível, cai para um fix
+   * imediato com timeout. Se falhar, libera o ref para o próximo ciclo do
+   * `sync` tentar de novo.
+   */
+  const sendInitialPosition = useCallback(async (alertId: string) => {
+    if (initialPointAlertIdRef.current === alertId) {
+      return;
+    }
+    initialPointAlertIdRef.current = alertId;
+    try {
+      const lastKnown = await Location.getLastKnownPositionAsync({
+        maxAge: 30_000,
+        requiredAccuracy: 50,
+      });
+      if (lastKnown) {
+        await sendLocationSample(alertId, lastKnown, getAccessTokenRef.current);
+        return;
+      }
+      const first = await withTimeout(
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        INITIAL_FIX_TIMEOUT_MS,
+      );
+      await sendLocationSample(alertId, first, getAccessTokenRef.current);
+    } catch {
+      initialPointAlertIdRef.current = null;
+      logMobileTelemetry("location_stream_failed", {
+        reason: "initial_fix",
+      });
+    }
+  }, []);
 
   const startForegroundWatch = useCallback(
     (alertId: string) => {
@@ -108,46 +212,10 @@ export function ActiveAlertLocationSync() {
             {
               accuracy: Location.Accuracy.Balanced,
               timeInterval: fgIntervalMs(),
-              distanceInterval: 15,
+              distanceInterval: LOCATION_DISTANCE_INTERVAL_M,
             },
             async (loc) => {
-              const token = getAccessTokenRef.current();
-              if (!token) {
-                return;
-              }
-              const body = {
-                lat: loc.coords.latitude,
-                lng: loc.coords.longitude,
-                accuracy: loc.coords.accuracy ?? undefined,
-                speed:
-                  loc.coords.speed != null &&
-                  !Number.isNaN(loc.coords.speed) &&
-                  loc.coords.speed >= 0
-                    ? loc.coords.speed
-                    : undefined,
-                heading:
-                  loc.coords.heading != null &&
-                  !Number.isNaN(loc.coords.heading) &&
-                  loc.coords.heading >= 0
-                    ? loc.coords.heading
-                    : undefined,
-                capturedAt: new Date(loc.timestamp).toISOString(),
-              };
-              const valid = PostAlertLocationRequestSchema.safeParse(body);
-              if (!valid.success) {
-                return;
-              }
-              const dedupeKey = makeLocationDedupeKey(
-                valid.data.lat,
-                valid.data.lng,
-                valid.data.capturedAt,
-              );
-              await sendLocationOrQueue(
-                alertId,
-                valid.data,
-                dedupeKey,
-                getAccessTokenRef.current,
-              );
+              await sendLocationSample(alertId, loc, getAccessTokenRef.current);
             },
           );
           fgWatchAlertIdRef.current = alertId;
@@ -187,7 +255,7 @@ export function ActiveAlertLocationSync() {
         await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
           accuracy: Location.Accuracy.Balanced,
           timeInterval: bgIntervalMs(),
-          distanceInterval: 15,
+          distanceInterval: LOCATION_DISTANCE_INTERVAL_M,
           showsBackgroundLocationIndicator: true,
           foregroundService: {
             notificationTitle: "ProtectHer",
@@ -267,6 +335,9 @@ export function ActiveAlertLocationSync() {
         }
       }
 
+      // Ponto imediato (uma vez por alerta), antes de iniciar os streams.
+      void sendInitialPosition(active.id);
+
       await tryStartBackground(active.id);
 
       const bg = await Location.getBackgroundPermissionsAsync();
@@ -285,6 +356,7 @@ export function ActiveAlertLocationSync() {
       syncInFlightRef.current = false;
     }
   }, [
+    sendInitialPosition,
     startForegroundWatch,
     state.status,
     stopForeground,

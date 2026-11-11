@@ -15,6 +15,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -44,6 +45,8 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duressPin, setDuressPin] = useState("");
+  const [duressLoading, setDuressLoading] = useState(false);
 
   // Pulsing indicator animation (smooth)
   const pulseOpacity = useRef(new Animated.Value(0.35)).current;
@@ -118,14 +121,19 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
     }, [loadActive]),
   );
 
-  const cancel = async () => {
+  const cancel = async (options?: { pin?: string }) => {
     setError(null);
-    setLoading(true);
+    const isDuress = options?.pin !== undefined;
+    if (isDuress) {
+      setDuressLoading(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const path = `/alerts/${encodeURIComponent(alertId)}/cancel`;
       const result = await apiFetchJson<unknown>(path, {
         method: "POST",
-        body: JSON.stringify({}),
+        body: JSON.stringify(isDuress ? { pin: options.pin } : {}),
         accessToken: getAccessToken(),
       });
       if (!result.ok) {
@@ -141,6 +149,7 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
       navigation.replace("Home");
     } finally {
       setLoading(false);
+      setDuressLoading(false);
     }
   };
 
@@ -154,6 +163,26 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
           text: "Sim, encerrar",
           style: "destructive",
           onPress: () => void cancel(),
+        },
+      ],
+    );
+  };
+
+  const handleDuressCancelPress = () => {
+    const pin = duressPin.trim();
+    if (pin.length === 0) {
+      setError("Informe o PIN de coação para cancelar com segurança.");
+      return;
+    }
+    Alert.alert(
+      "Cancelamento sob coação",
+      "O alerta será encerrado e marcado como situação de alto risco (coação) sem alertar quem está ao seu lado.",
+      [
+        { text: "Voltar", style: "cancel" },
+        {
+          text: "Cancelar com PIN",
+          style: "destructive",
+          onPress: () => void cancel({ pin }),
         },
       ],
     );
@@ -250,6 +279,40 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <Text style={styles.cancelButtonText}>Cancelar alerta</Text>
+            )}
+          </Pressable>
+        </View>
+
+        <View style={styles.sectionCard}>
+          <Text style={styles.cancelTitle}>Estou sob coação</Text>
+          <Text style={styles.cancelDesc}>
+            Se alguém a obrigar a encerrar o alerta, informe um PIN: ele será
+            encerrado normalmente, mas seus contatos serão avisados de que você
+            está em perigo.
+          </Text>
+          <TextInput
+            style={styles.duressInput}
+            placeholder="PIN de coação"
+            placeholderTextColor="#8B7378"
+            value={duressPin}
+            onChangeText={setDuressPin}
+            secureTextEntry
+            autoCapitalize="none"
+            cursorColor="#DA8295"
+            selectionColor="#DA8295"
+          />
+          <Pressable
+            onPress={handleDuressCancelPress}
+            disabled={duressLoading}
+            style={({ pressed }) => [
+              styles.duressButton,
+              (pressed || duressLoading) && styles.buttonPressed,
+            ]}
+          >
+            {duressLoading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.cancelButtonText}>Cancelar com PIN</Text>
             )}
           </Pressable>
         </View>
@@ -396,6 +459,28 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_600SemiBold",
     fontSize: 15,
     color: "#FFFFFF",
+  },
+  duressInput: {
+    backgroundColor: "#FFD0E1",
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 46,
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    color: "#55383E",
+    borderWidth: 0,
+  },
+  duressButton: {
+    minHeight: 44,
+    borderRadius: Radius.md,
+    backgroundColor: "#B12E58",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginTop: 2,
+    ...Shadow.sm,
   },
   error: {
     fontFamily: "Poppins_400Regular",

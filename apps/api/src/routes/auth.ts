@@ -37,7 +37,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const email = normalizeEmail(parsed.data.email);
-    const passwordHash = bcrypt.hashSync(parsed.data.password, BCRYPT_ROUNDS);
+    const passwordHash = await bcrypt.hash(parsed.data.password, BCRYPT_ROUNDS);
 
     try {
       const [inserted] = await db
@@ -108,7 +108,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
       const valid =
         user !== undefined &&
-        bcrypt.compareSync(parsed.data.password, user.passwordHash);
+        (await bcrypt.compare(parsed.data.password, user.passwordHash));
 
       if (!valid) {
         return reply
