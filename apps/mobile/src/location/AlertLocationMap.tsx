@@ -33,7 +33,11 @@ type Point = { id: string; lat: number; lng: number; capturedAt: string };
  * Faz polling incremental de `GET /alerts/:id/locations`, centraliza no primeiro
  * ponto recebido e move o marker nos pontos seguintes.
  */
-export function AlertLocationMap({ alertId, startedAt, onMapTouchChange }: Props) {
+export function AlertLocationMap({
+  alertId,
+  startedAt,
+  onMapTouchChange,
+}: Props) {
   const { getAccessToken } = useAuth();
   const [points, setPoints] = useState<Point[]>([]);
   const sinceRef = useRef<string | null>(null);
@@ -161,10 +165,7 @@ export function AlertLocationMap({ alertId, startedAt, onMapTouchChange }: Props
           originWhitelist={["*"]}
         />
         <Pressable
-          style={({ pressed }) => [
-            styles.centerBtn,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.centerBtn, pressed && styles.pressed]}
           onPress={() => webViewRef.current?.injectJavaScript("centerMap()")}
         >
           <Text style={styles.centerBtnText}>Centralizar</Text>
