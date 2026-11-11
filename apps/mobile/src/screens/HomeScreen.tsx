@@ -19,7 +19,10 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { publishActiveAlert } from "../alerts/activeAlertBus";
 import { apiFetchJson } from "../api/client";
+import { readMicPermission } from "../audio/micPermission";
+import { onSosAudioCommand, sendSosAudioCommand } from "../audio/sosAudioStore";
 import { useAuth } from "../auth/AuthContext";
 import { useEspButtonBleState } from "../ble/EspButtonBleContext";
 import { resolveSosCircleScale, useSosExperiment } from "../experiments";
@@ -37,6 +40,7 @@ export function HomeScreen({ navigation }: Props) {
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sosError, setSosError] = useState<string | null>(null);
+  const [micGranted, setMicGranted] = useState(true);
   const isSmallScreen = height < 700 || width < 360;
   const isVeryNarrow = width < 350;
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
@@ -87,7 +91,19 @@ export function HomeScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       void refreshActive();
+      void readMicPermission().then((p) => setMicGranted(p.granted));
     }, [refreshActive]),
+  );
+
+  // A explicação do microfone envia "kick" ao fechar: atualiza o link.
+  useEffect(
+    () =>
+      onSosAudioCommand((command) => {
+        if (command.type === "kick") {
+          void readMicPermission().then((p) => setMicGranted(p.granted));
+        }
+      }),
+    [],
   );
 
   const startAlert = useCallback(async () => {
@@ -119,6 +135,8 @@ export function HomeScreen({ navigation }: Props) {
       }
       trackConversion("sos_time_to_trigger");
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
+      // Liga o áudio do SOS já (com o app aberto o sistema permite o microfone).
+      publishActiveAlert(body.data.alert.id);
       // Inicia o streaming de GPS na hora, sem esperar o polling de ~25s.
       requestLocationSyncNow();
       navigation.navigate("ActiveAlert", { alertId: body.data.alert.id });
@@ -254,6 +272,20 @@ export function HomeScreen({ navigation }: Props) {
               Configurar SOS rápido (sem abrir o app) ›
             </Text>
           </Pressable>
+
+          {micGranted ? null : (
+            <Pressable
+              onPress={() =>
+                sendSosAudioCommand({ type: "open_mic_explanation" })
+              }
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <Text style={styles.quickSosLink}>
+                Ativar áudio no SOS (microfone) ›
+              </Text>
+            </Pressable>
+          )}
 
           <View style={styles.bleStatusCard}>
             <Text

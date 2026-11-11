@@ -83,6 +83,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       [
+        "expo-audio",
+        {
+          microphonePermission:
+            "O microfone é usado só durante um alerta de SOS: o som ao seu redor é gravado e enviado aos seus contatos de segurança.",
+          // Grava com a tela bloqueada (iOS: modo de fundo "audio"; Android:
+          // serviço em primeiro plano do tipo "microphone").
+          enableBackgroundRecording: true,
+          enableBackgroundPlayback: false,
+        },
+      ],
+      [
         "expo-notifications",
         {
           defaultChannel: "alerts",

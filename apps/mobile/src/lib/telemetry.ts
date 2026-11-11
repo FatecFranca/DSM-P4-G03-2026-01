@@ -14,7 +14,13 @@ export type MobileTelemetryEvent =
   | "push_token_register_failed"
   | "push_notification_received"
   | "experiment_exposed"
-  | "experiment_converted";
+  | "experiment_converted"
+  | "audio_recording_started"
+  | "audio_recording_stopped"
+  | "audio_recording_failed"
+  | "audio_chunk_sent"
+  | "audio_chunk_upload_failed"
+  | "audio_chunk_dropped";
 
 /** Sem PII: apenas códigos/ids já expostos ao cliente. */
 export function logMobileTelemetry(

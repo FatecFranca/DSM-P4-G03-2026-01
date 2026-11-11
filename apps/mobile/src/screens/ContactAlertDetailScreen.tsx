@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
+import { ContactAlertAudioPanel } from "../audio/ContactAlertAudioPanel";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
 import { AlertLocationMap } from "../location/AlertLocationMap";
@@ -108,6 +109,8 @@ export function ContactAlertDetailScreen({ route }: Props) {
           startedAt={startedAt}
           onMapTouchChange={setMapTouching}
         />
+
+        <ContactAlertAudioPanel alertId={alertId} />
 
         {confirmedAt ? (
           <View style={styles.ackConfirmed}>
