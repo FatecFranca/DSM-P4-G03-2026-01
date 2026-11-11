@@ -166,9 +166,17 @@ export function HomeScreen({ navigation }: Props) {
       >
         <View style={styles.headerTop}>
           <Text style={styles.brand}>Protect Her</Text>
-          <Pressable onPress={() => void signOut()} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>Sair</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => navigation.navigate("Appearance")}
+              style={styles.logoutBtn}
+            >
+              <Text style={styles.logoutText}>Aparência</Text>
+            </Pressable>
+            <Pressable onPress={() => void signOut()} style={styles.logoutBtn}>
+              <Text style={styles.logoutText}>Sair</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.userBlock}>
@@ -316,6 +324,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   brand: {
     fontFamily: "Italianno_400Regular",

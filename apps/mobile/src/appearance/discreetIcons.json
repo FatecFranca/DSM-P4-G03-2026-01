@@ -1,0 +1,41 @@
+{
+  "defaultKey": "notes",
+  "icons": [
+    {
+      "key": "notes",
+      "label": "Notas",
+      "description": "Bloco de notas amarelo",
+      "background": ["#FFD65C", "#F5B82E"]
+    },
+    {
+      "key": "calculator",
+      "label": "Calculadora",
+      "description": "Calculadora cinza-grafite",
+      "background": ["#4B5160", "#2C3039"]
+    },
+    {
+      "key": "weather",
+      "label": "Clima",
+      "description": "Sol e nuvem sobre céu azul",
+      "background": ["#5BB0FF", "#2F7BE5"]
+    },
+    {
+      "key": "calendar",
+      "label": "Agenda",
+      "description": "Calendário claro",
+      "background": ["#EEF1F6", "#D5DBE6"]
+    },
+    {
+      "key": "cycle",
+      "label": "Meu Ciclo",
+      "description": "Acompanhamento de ciclo, tom lilás",
+      "background": ["#B197FB", "#7C5CE0"]
+    },
+    {
+      "key": "clock",
+      "label": "Relógio",
+      "description": "Relógio de mostrador escuro",
+      "background": ["#F6F7F9", "#DDE0E6"]
+    }
+  ]
+}

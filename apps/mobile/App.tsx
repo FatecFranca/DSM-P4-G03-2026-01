@@ -7,6 +7,7 @@ import {
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { PrivacyScreenSync } from "./src/appearance/PrivacyScreenSync";
 import { AuthProvider } from "./src/auth/AuthContext";
 import { EspButtonBleProvider } from "./src/ble/EspButtonBleContext";
 import { PushTokenSync } from "./src/devices/PushTokenSync";
@@ -31,6 +32,7 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <EspButtonBleProvider>
+          <PrivacyScreenSync />
           <LocationPermissionSync />
           <ActiveAlertLocationSync />
           <EmergencyContactsSync />

@@ -43,7 +43,8 @@ export async function scheduleAlertStartedNotification(
     }
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "🚨 Alerta de Perigo Ativo",
+        // Aparece na tela de bloqueio: título neutro, sem indicar emergência.
+        title: "Lembrete",
         body,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,

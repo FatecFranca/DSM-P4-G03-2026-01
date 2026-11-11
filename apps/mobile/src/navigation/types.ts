@@ -15,5 +15,6 @@ export type AppStackParamList = {
     startedAt: string;
   };
   DeviceManagement: undefined;
+  Appearance: undefined;
   ExperimentDashboard: undefined;
 };

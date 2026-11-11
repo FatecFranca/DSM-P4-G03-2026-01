@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useAuth } from "../auth/AuthContext";
 import { ActiveAlertScreen } from "../screens/ActiveAlertScreen";
+import { AppearanceScreen } from "../screens/AppearanceScreen";
 import { ContactAlertDetailScreen } from "../screens/ContactAlertDetailScreen";
 import { ContactAlertsFeedScreen } from "../screens/ContactAlertsFeedScreen";
 import { ContactsScreen } from "../screens/ContactsScreen";
@@ -104,6 +105,11 @@ function AppNavigator() {
         name="DeviceManagement"
         component={DeviceManagementScreen}
         options={{ title: "Dispositivos BLE" }}
+      />
+      <AppStack.Screen
+        name="Appearance"
+        component={AppearanceScreen}
+        options={{ title: "Aparência" }}
       />
       <AppStack.Screen
         name="ExperimentDashboard"
