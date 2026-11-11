@@ -131,27 +131,45 @@ export function SosAudioRecorderSync() {
       });
     };
 
-    const finishChunk = async (
+    type RecordedChunk = {
+      alertId: string;
+      fileUri: string;
+      startedAt: number;
+      durationMs: number;
+    };
+
+    const stopCurrent = async (
       alertId: string,
       fileUri: string,
       startedAt: number,
-    ) => {
-      const rec = recorderRef.current;
+    ): Promise<RecordedChunk> => {
       try {
-        await rec.stop();
+        await recorderRef.current.stop();
       } catch {
         // Interrompido pelo sistema: o arquivo pode ainda ser aproveitável.
       }
-      const durationMs = Date.now() - startedAt;
-      if (!fileUri || durationMs < SOS_AUDIO_MIN_CHUNK_MS) {
+      return {
+        alertId,
+        fileUri,
+        startedAt,
+        durationMs: Date.now() - startedAt,
+      };
+    };
+
+    /** Move o trecho para a fila e dispara o envio. Nunca lança. */
+    const saveChunk = async (chunk: RecordedChunk) => {
+      if (!chunk.fileUri || chunk.durationMs < SOS_AUDIO_MIN_CHUNK_MS) {
         return;
       }
       try {
-        await enqueueRecordedChunk(fileUri, {
-          alertId,
-          clientChunkId: makeClientChunkId(startedAt),
-          capturedAt: new Date(startedAt).toISOString(),
-          durationMs: Math.min(durationMs, ALERT_AUDIO_CHUNK_MAX_DURATION_MS),
+        await enqueueRecordedChunk(chunk.fileUri, {
+          alertId: chunk.alertId,
+          clientChunkId: makeClientChunkId(chunk.startedAt),
+          capturedAt: new Date(chunk.startedAt).toISOString(),
+          durationMs: Math.min(
+            chunk.durationMs,
+            ALERT_AUDIO_CHUNK_MAX_DURATION_MS,
+          ),
         });
         updateSosAudioState({
           chunksRecorded: getSosAudioState().chunksRecorded + 1,
@@ -171,6 +189,11 @@ export function SosAudioRecorderSync() {
       let audioModeOn = false;
       let failures = 0;
       let lastAlertId: string | null = null;
+      let permissionChecked = false;
+      // Trecho recém-parado: só é salvo depois que o próximo já está gravando,
+      // para o intervalo sem microfone entre trechos ser o menor possível
+      // (no iOS, o app em segundo plano é suspenso se o áudio parar).
+      let pending: RecordedChunk | null = null;
       try {
         for (;;) {
           const alertId = desiredAlertId();
@@ -179,10 +202,13 @@ export function SosAudioRecorderSync() {
           }
           lastAlertId = alertId;
 
-          const mic = await readMicPermission();
-          if (!mic.granted) {
-            setStatus("needs_permission", alertId);
-            break;
+          if (!permissionChecked) {
+            const mic = await readMicPermission();
+            if (!mic.granted) {
+              setStatus("needs_permission", alertId);
+              break;
+            }
+            permissionChecked = true;
           }
 
           const rec = recorderRef.current;
@@ -210,21 +236,30 @@ export function SosAudioRecorderSync() {
             rec.record();
           } catch (error) {
             failures += 1;
+            permissionChecked = false;
             const foreground = AppState.currentState === "active";
             setStatus(foreground ? "error" : "waiting_foreground", alertId);
             logMobileTelemetry("audio_recording_failed", {
               reason: foreground ? "start_failed" : "start_in_background",
               message: error instanceof Error ? error.message : undefined,
             });
+            if (pending) {
+              await saveChunk(pending);
+              pending = null;
+            }
             await sleep(recorderRestartDelayMs(failures));
             continue;
           }
 
-          if (failures > 0 || getSosAudioState().status !== "recording") {
+          const startedAt = Date.now();
+          if (pending) {
+            void saveChunk(pending);
+            pending = null;
+          }
+          if (getSosAudioState().status !== "recording") {
             logMobileTelemetry("audio_recording_started", { alertId });
           }
           failures = 0;
-          const startedAt = Date.now();
           setStatus("recording", alertId);
 
           // Grava até completar o trecho ou o alerta mudar (encerrado/pausado).
@@ -235,9 +270,12 @@ export function SosAudioRecorderSync() {
             await sleep(SOS_AUDIO_CHUNK_MS - (Date.now() - startedAt));
           }
 
-          await finishChunk(alertId, fileUri, startedAt);
+          pending = await stopCurrent(alertId, fileUri, startedAt);
         }
       } finally {
+        if (pending) {
+          await saveChunk(pending);
+        }
         if (audioModeOn) {
           await setAudioModeAsync({
             allowsRecording: false,
