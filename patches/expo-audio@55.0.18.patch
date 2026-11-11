@@ -1,0 +1,60 @@
+diff --git a/android/src/main/java/expo/modules/audio/service/AudioRecordingService.kt b/android/src/main/java/expo/modules/audio/service/AudioRecordingService.kt
+index 2c9230336efc5c2ba9d5c6e5d35bd84a02dfd369..4e6305d17e0dadd78dffc1f3ff76b426640fea30 100644
+--- a/android/src/main/java/expo/modules/audio/service/AudioRecordingService.kt
++++ b/android/src/main/java/expo/modules/audio/service/AudioRecordingService.kt
+@@ -59,12 +59,13 @@ class AudioRecordingService : Service() {
+     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+       val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+       if (notificationManager.getNotificationChannel(CHANNEL_ID) == null) {
++        // ProtectHer: textos discretos em pt-BR (a notificação pode ser vista por quem está perto).
+         val channel = NotificationChannel(
+           CHANNEL_ID,
+-          "Audio Recording",
++          "Alerta ativo",
+           NotificationManager.IMPORTANCE_LOW
+         ).apply {
+-          description = "Shows when audio is being recorded in the background"
++          description = "Aparece enquanto um alerta está ativo"
+           setShowBadge(false)
+           enableVibration(false)
+           enableLights(false)
+@@ -76,16 +77,6 @@ class AudioRecordingService : Service() {
+   }
+ 
+   private fun buildNotification(): Notification {
+-    val stopIntent = Intent(this, AudioRecordingService::class.java).apply {
+-      action = ACTION_STOP_RECORDING
+-    }
+-    val stopPendingIntent = PendingIntent.getService(
+-      this,
+-      0,
+-      stopIntent,
+-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+-    )
+-
+     val contentIntent = packageManager.getLaunchIntentForPackage(packageName)?.let { appIntent ->
+       PendingIntent.getActivity(
+         this,
+@@ -95,17 +86,14 @@ class AudioRecordingService : Service() {
+       )
+     }
+ 
++    // ProtectHer: sem ação "Parar" (quem está perto não deve conseguir interromper a gravação
++    // pela notificação; a vítima para pelo app) e sem ícone de microfone.
+     return NotificationCompat.Builder(this, CHANNEL_ID)
+-      .setContentTitle("Recording audio")
+-      .setContentText("Tap to return to app")
+-      .setSmallIcon(android.R.drawable.ic_btn_speak_now)
++      .setContentTitle("Alerta ativo")
++      .setContentText("Toque para abrir")
++      .setSmallIcon(android.R.drawable.ic_dialog_info)
+       .setOngoing(true)
+       .setContentIntent(contentIntent)
+-      .addAction(
+-        android.R.drawable.ic_delete,
+-        "Stop",
+-        stopPendingIntent
+-      )
+       .setCategory(NotificationCompat.CATEGORY_SERVICE)
+       .setSilent(true)
+       .setShowWhen(false)

@@ -21,7 +21,8 @@
   "version": "1.0.0",
   "pnpm": {
     "patchedDependencies": {
-      "@expo/cli@55.0.32": "patches/@expo__cli@55.0.32.patch"
+      "@expo/cli@55.0.32": "patches/@expo__cli@55.0.32.patch",
+      "expo-audio@55.0.18": "patches/expo-audio@55.0.18.patch"
     }
   }
 }
