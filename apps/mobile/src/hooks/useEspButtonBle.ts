@@ -27,6 +27,25 @@ const MAX_RECONNECT_DELAY = 30000;
 const BASE_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 
+// Estados do adaptador Bluetooth (react-native-ble-plx usa estes valores como
+// string). São comparados literalmente para não importar o módulo nativo no
+// runtime do Expo Go (que não tem suporte a BLE).
+const BLE_POWERED_ON = "PoweredOn";
+const BLE_POWERED_OFF = "PoweredOff";
+
+function statusForBleState(state: string): string {
+  switch (state) {
+    case BLE_POWERED_OFF:
+      return "Bluetooth desligado";
+    case "Unauthorized":
+      return "Bluetooth sem permissão";
+    case "Unsupported":
+      return "Bluetooth não suportado";
+    default:
+      return "Bluetooth indisponível";
+  }
+}
+
 export function useEspButtonBle(
   options: UseEspButtonBleOptions = {},
 ): EspButtonBleState {
@@ -48,6 +67,7 @@ export function useEspButtonBle(
   const reconnectAttemptsRef = useRef(0);
   const heartbeatSentRef = useRef(false);
   const isScanningRef = useRef(false);
+  const bleStateSubscriptionRef = useRef<Subscription | null>(null);
 
   const cleanup = useCallback(async () => {
     const bleManager = getBleManager();
@@ -67,6 +87,9 @@ export function useEspButtonBle(
 
     monitorSubscriptionRef.current?.remove();
     monitorSubscriptionRef.current = null;
+
+    bleStateSubscriptionRef.current?.remove();
+    bleStateSubscriptionRef.current = null;
 
     try {
       await deviceRef.current?.cancelConnection();
@@ -234,6 +257,7 @@ export function useEspButtonBle(
         console.log("Conexão BLE estabelecida");
         if (mountedRef.current) {
           setIsConnected(true);
+          setError(null);
           setStatus("Conectado");
         }
 
@@ -258,6 +282,15 @@ export function useEspButtonBle(
         console.log("erro de conexão:", errorMsg);
 
         if (!mountedRef.current) return;
+
+        // Bluetooth desligado: reconectar é inútil. O listener de estado
+        // retoma a busca automaticamente quando o Bluetooth for religado.
+        if (errorMsg.toLowerCase().includes("powered off")) {
+          setIsConnected(false);
+          setError(null);
+          setStatus(statusForBleState(BLE_POWERED_OFF));
+          return;
+        }
 
         reconnectAttemptsRef.current += 1;
 
@@ -369,8 +402,13 @@ export function useEspButtonBle(
           if (scanError) {
             console.warn("⚠️ Erro no scan BLE:", scanError.message);
             if (!cancelled && mountedRef.current) {
-              setError(scanError.message);
-              setStatus("Erro de conexão");
+              if (scanError.message.toLowerCase().includes("powered off")) {
+                setError(null);
+                setStatus(statusForBleState(BLE_POWERED_OFF));
+              } else {
+                setError(scanError.message);
+                setStatus("Erro de conexão");
+              }
             }
             bleManager.stopDeviceScan();
             isScanningRef.current = false;
@@ -396,7 +434,40 @@ export function useEspButtonBle(
       );
     };
 
-    void tryReconnectOrScan();
+    // Reage a ligar/desligar o Bluetooth. Com emitCurrentState=true o estado
+    // atual é entregue de imediato, então a busca começa (ou a mensagem de
+    // "Bluetooth desligado" aparece) sem depender de um evento posterior.
+    const handleBleStateChange = (newState: string) => {
+      if (cancelled || !mountedRef.current) return;
+
+      if (newState === BLE_POWERED_ON) {
+        if (__DEV__) {
+          console.log("Bluetooth ligado, iniciando busca BLE...");
+        }
+        isScanningRef.current = false;
+        reconnectAttemptsRef.current = 0;
+        void tryReconnectOrScan();
+        return;
+      }
+
+      if (__DEV__) {
+        console.log("Estado BLE alterado:", newState);
+      }
+      isScanningRef.current = false;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      bleManager.stopDeviceScan();
+      setIsConnected(false);
+      setError(null);
+      setStatus(statusForBleState(newState));
+    };
+
+    bleStateSubscriptionRef.current = bleManager.onStateChange(
+      handleBleStateChange,
+      true,
+    );
 
     return () => {
       cancelled = true;
