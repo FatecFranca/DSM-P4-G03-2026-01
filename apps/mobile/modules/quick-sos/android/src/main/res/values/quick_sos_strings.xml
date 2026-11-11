@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Textos neutros de propósito: aparecem na tela bloqueada / painel de notificações. -->
+    <string name="quick_sos_tile_label">Pedir ajuda</string>
+    <string name="quick_sos_tile_counting">Toque para cancelar</string>
+    <string name="quick_sos_service_channel">Atalho rápido</string>
+    <string name="quick_sos_events_channel">Atalho rápido · avisos</string>
+    <string name="quick_sos_service_title">Atalho rápido ativo</string>
+    <string name="quick_sos_service_text">Pressione o botão liga/desliga 3 vezes</string>
+    <string name="quick_sos_countdown_title">Enviando em %1$d s</string>
+    <string name="quick_sos_countdown_text">Toque em Cancelar ou repita o gesto para cancelar</string>
+    <string name="quick_sos_cancel">Cancelar</string>
+    <string name="quick_sos_done_title">Atalho executado</string>
+    <string name="quick_sos_done_text">Toque para acompanhar</string>
+    <string name="quick_sos_test_title">Teste do atalho</string>
+    <string name="quick_sos_test_text">Gesto reconhecido. Nenhum alerta foi enviado.</string>
+    <string name="quick_sos_failed_title">Não foi possível concluir</string>
+    <string name="quick_sos_failed_text">Toque para abrir o app e tentar de novo</string>
+</resources>

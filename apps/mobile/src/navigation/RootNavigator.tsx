@@ -15,6 +15,7 @@ import { DeviceManagementScreen } from "../screens/DeviceManagementScreen";
 import { ExperimentDashboardScreen } from "../screens/ExperimentDashboardScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
+import { QuickSosScreen } from "../screens/QuickSosScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
 import { SosScreen } from "../screens/SosScreen";
 import { Colors, Typography } from "../theme";
@@ -136,6 +137,11 @@ function AppNavigator() {
         name="ExperimentDashboard"
         component={ExperimentDashboardScreen}
         options={{ title: "Resultados A/B" }}
+      />
+      <AppStack.Screen
+        name="QuickSos"
+        component={QuickSosScreen}
+        options={{ title: "SOS rápido" }}
       />
     </AppStack.Navigator>
   );

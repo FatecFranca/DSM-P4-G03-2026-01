@@ -245,6 +245,16 @@ export function HomeScreen({ navigation }: Props) {
 
           {sosError ? <Text style={styles.sosError}>{sosError}</Text> : null}
 
+          <Pressable
+            onPress={() => navigation.navigate("QuickSos")}
+            accessibilityRole="button"
+            hitSlop={8}
+          >
+            <Text style={styles.quickSosLink}>
+              Configurar SOS rápido (sem abrir o app) ›
+            </Text>
+          </Pressable>
+
           <View style={styles.bleStatusCard}>
             <Text
               style={[
@@ -458,6 +468,13 @@ const styles = StyleSheet.create({
     color: "#B12E58",
     textAlign: "center",
     marginTop: -6,
+  },
+  quickSosLink: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 13,
+    color: "#B12E58",
+    textAlign: "center",
+    textDecorationLine: "underline",
   },
   quickActions: {
     flexDirection: "row",

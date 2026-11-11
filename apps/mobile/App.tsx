@@ -15,6 +15,7 @@ import { EmergencyContactsSync } from "./src/emergency/EmergencyContactsSync";
 import { LocationPermissionSync } from "./src/location/LocationPermissionSync";
 import { ActiveAlertLocationSync } from "./src/location/activeAlertLocationSync";
 import { RootNavigator } from "./src/navigation/RootNavigator";
+import { QuickSosSync } from "./src/quickSos/QuickSosSync";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -37,6 +38,7 @@ export default function App() {
           <ActiveAlertLocationSync />
           <EmergencyContactsSync />
           <PushTokenSync />
+          <QuickSosSync />
           <RootNavigator />
           <StatusBar style="dark" />
         </EspButtonBleProvider>

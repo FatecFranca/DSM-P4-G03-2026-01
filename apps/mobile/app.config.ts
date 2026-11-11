@@ -71,6 +71,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     plugins: [
       "./plugins/withDiscreetIcons",
+      "./plugins/withQuickSos",
       [
         "expo-location",
         {
