@@ -251,3 +251,38 @@ Payload `data` do FCM inclui `alertId` e `kind` (`alert_started` | `escalation`)
 
 - `POST /alerts/:id/location`: rejeita `capturedAt` que **retroceda** além de `ALERT_LOCATION_CAPTURE_REGRESSION_MS` (padrão 180000 ms = 3 min) em relação ao último ponto já armazenado para o mesmo alerta (`VALIDATION_ERROR`).
 - Rate limit por usuário permanece configurável via `ALERT_LOCATION_RATE_MAX_PER_MINUTE`.
+
+## Áudio do SOS
+
+Durante um alerta ativo o app grava o som ambiente em trechos de **15 s** (AAC mono em M4A, ~60 KB) e envia cada trecho. Os contatos ouvem pela tela do alerta.
+
+### `POST /alerts/:id/audio`
+
+Só a **dona** do alerta (outros recebem `404`). Body JSON (limite 2,2 MB):
+
+```json
+{
+  "clientChunkId": "lq8z3k2a-0f9x7c1b",
+  "capturedAt": "2026-11-11T23:08:08.433Z",
+  "durationMs": 15000,
+  "mimeType": "audio/mp4",
+  "dataBase64": "AAAAHGZ0eXBNNEEg..."
+}
+```
+
+- `201` `{ chunk, duplicate: false }`; reenvio com o mesmo `clientChunkId` → `200` `{ chunk, duplicate: true }` (fila offline idempotente).
+- Valida a assinatura do arquivo (caixa `ftyp` do MP4), tamanho máximo **1,5 MB**, `capturedAt` não anterior ao início do alerta nem no futuro (tolerância 2 min).
+- Alerta encerrado: aceita só trechos gravados **antes** do encerramento e enviados até `ALERT_AUDIO_LATE_UPLOAD_WINDOW_MS` (padrão 24 h) depois → senão `409 ALERT_NOT_ACTIVE`.
+- Rate limit por usuário: `ALERT_AUDIO_RATE_MAX_PER_MINUTE` (padrão 60).
+
+### `GET /alerts/:id/audio?since=ISO`
+
+Dona ou contato ativo (senão `403`). Lista metadados `{ chunks: [{ id, capturedAt, durationMs, mimeType, sizeBytes, createdAt }] }` em ordem de gravação; `since` filtra por `createdAt` (polling incremental).
+
+### `GET /alerts/:id/audio/:chunkId`
+
+Mesmo acesso da lista. Devolve os bytes (`audio/mp4`, `Cache-Control: private, no-store`) e aceita `Range: bytes=...` (`206`/`416`).
+
+### Retenção
+
+Os trechos são apagados automaticamente depois de `ALERT_AUDIO_RETENTION_DAYS` (padrão **30 dias**, job de hora em hora).
