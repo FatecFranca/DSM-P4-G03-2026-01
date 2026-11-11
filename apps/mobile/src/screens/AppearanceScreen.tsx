@@ -2,6 +2,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   Image,
   Platform,
   Pressable,
@@ -16,14 +17,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   applyPrivacyScreen,
   getActiveIconKey,
+  getIconHidden,
   isDiscreetIconSupported,
+  isHideAppSupported,
+  requestAddQuickTile,
   setActiveIconKey,
+  setIconHidden,
 } from "../appearance/discreetIconNative";
 import { DISCREET_ICON_PREVIEWS } from "../appearance/discreetIconPreviews";
 import {
   DEFAULT_ICON_KEY,
   DISCREET_ICONS,
   type DiscreetIconKey,
+  SECRET_CODE_DIAL,
   getDiscreetIcon,
 } from "../appearance/discreetIcons";
 import {
@@ -35,13 +41,17 @@ import { Radius, Spacing } from "../theme";
 
 type Props = NativeStackScreenProps<AppStackParamList, "Appearance">;
 
-export function AppearanceScreen(_props: Props) {
+/** Único jeito de voltar com o app oculto (nem todo discador aceita códigos secretos). */
+const HOW_TO_REOPEN = `puxe a barra de cima (Configurações Rápidas) e toque no atalho “ProtectHer”; depois, aqui em Aparência, toque em “Mostrar ícone de novo”. Se o atalho não estiver lá, edite os atalhos (lápis) e arraste-o. Plano B: discar ${SECRET_CODE_DIAL} (nem todo celular aceita).`;
+
+export function AppearanceScreen({ navigation, route }: Props) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
   const [activeKey, setActiveKey] = useState<DiscreetIconKey>(DEFAULT_ICON_KEY);
   const [busyKey, setBusyKey] = useState<DiscreetIconKey | null>(null);
   const [privacyScreen, setPrivacyScreen] = useState(true);
+  const [appHidden, setAppHidden] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,8 +59,108 @@ export function AppearanceScreen(_props: Props) {
     void getActiveIconKey()
       .then(setActiveKey)
       .catch(() => undefined);
+    void getIconHidden()
+      .then(setAppHidden)
+      .catch(() => undefined);
     void readPrivacyScreenPreference().then(setPrivacyScreen);
   }, []);
+
+  const hideApp = useCallback(async () => {
+    setError(null);
+    setMessage(null);
+    try {
+      await setIconHidden(true);
+      setAppHidden(true);
+      setMessage(
+        `Pronto. O app saiu da tela inicial. Para abrir: ${HOW_TO_REOPEN}`,
+      );
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Não foi possível ocultar o app.",
+      );
+    }
+  }, []);
+
+  const showApp = useCallback(async () => {
+    setError(null);
+    setMessage(null);
+    try {
+      await setIconHidden(false);
+      setAppHidden(false);
+      setMessage("Pronto. O ícone voltou para a tela inicial.");
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Não foi possível mostrar o ícone.",
+      );
+    }
+  }, []);
+
+  const addQuickTile = useCallback(async () => {
+    setError(null);
+    setMessage(null);
+    const result = await requestAddQuickTile().catch(
+      () => "unsupported" as const,
+    );
+    if (result === "added" || result === "already") {
+      setMessage(
+        "Pronto. O atalho “ProtectHer” está nas Configurações Rápidas.",
+      );
+    } else if (result === "declined") {
+      setError("O atalho não foi adicionado.");
+    } else {
+      setError(
+        "Este celular não permite adicionar o atalho daqui. Adicione manualmente: puxe a barra de cima, toque no lápis e arraste “ProtectHer”.",
+      );
+    }
+    return result;
+  }, []);
+
+  const hideWithTile = useCallback(async () => {
+    const result = await addQuickTile();
+    if (result === "added" || result === "already") {
+      await hideApp();
+      return;
+    }
+    Alert.alert(
+      "Ocultar sem o atalho?",
+      `Sem o atalho nas Configurações Rápidas, só dá para abrir o app discando ${SECRET_CODE_DIAL}, e nem todo celular aceita esse código. Recomendamos adicionar o atalho antes.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Ocultar mesmo assim",
+          style: "destructive",
+          onPress: () => void hideApp(),
+        },
+      ],
+    );
+  }, [addQuickTile, hideApp]);
+
+  const confirmHideApp = useCallback(() => {
+    Alert.alert(
+      "Ocultar o app?",
+      `O ícone some da tela inicial e da lista de apps. Para abrir de novo: ${HOW_TO_REOPEN}`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Ocultar",
+          style: "destructive",
+          onPress: () => void hideWithTile(),
+        },
+      ],
+    );
+  }, [hideWithTile]);
+
+  // Ação rápida (long-press no ícone) "Ocultar app" chega aqui com { hide: true }.
+  const hideRequested = route.params?.hide === true;
+  useEffect(() => {
+    if (!hideRequested) {
+      return;
+    }
+    navigation.setParams({ hide: undefined });
+    if (isHideAppSupported) {
+      confirmHideApp();
+    }
+  }, [hideRequested, navigation, confirmHideApp]);
 
   const selectIcon = useCallback(
     async (key: DiscreetIconKey) => {
@@ -63,6 +173,7 @@ export function AppearanceScreen(_props: Props) {
       try {
         await setActiveIconKey(key);
         setActiveKey(key);
+        setAppHidden(false);
         setMessage(
           Platform.OS === "android"
             ? `Pronto. Na tela inicial o app passa a aparecer como “${getDiscreetIcon(key).label}” (pode levar alguns segundos).`
@@ -111,8 +222,9 @@ export function AppearanceScreen(_props: Props) {
       >
         <Text style={styles.pageTitle}>Aparência e discrição</Text>
         <Text style={styles.desc}>
-          Escolha como o app aparece na tela inicial do seu celular. Só você
-          precisa saber que ele é um app de proteção.
+          O app usa o ícone original por padrão. Se quiser deixá-lo mais
+          discreto, escolha um disfarce abaixo; você pode voltar ao original a
+          qualquer momento.
         </Text>
 
         {isDiscreetIconSupported ? null : (
@@ -157,6 +269,54 @@ export function AppearanceScreen(_props: Props) {
 
         {message ? <Text style={styles.success}>{message}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {isHideAppSupported ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>
+              {appHidden ? "App oculto" : "Ocultar o app"}
+            </Text>
+            <Text style={styles.cardDesc}>
+              {appHidden
+                ? `O ícone não aparece na tela inicial. Para abrir: ${HOW_TO_REOPEN}`
+                : `Tira o ícone da tela inicial e da lista de apps. Para abrir de novo: ${HOW_TO_REOPEN} Também dá para ocultar segurando o ícone do app e tocando em “Ocultar app”.`}
+            </Text>
+            <Pressable
+              onPress={appHidden ? () => void showApp() : confirmHideApp}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.actionButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.actionButtonText}>
+                {appHidden ? "Mostrar ícone de novo" : "Ocultar o app"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void addQuickTile()}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.secondaryButtonText}>
+                Adicionar atalho nas Configurações Rápidas
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {Platform.OS === "ios" ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Ocultar o app no iPhone</Text>
+            <Text style={styles.cardDesc}>
+              {
+                "O iOS não deixa um app se ocultar sozinho, mas o sistema faz isso (iOS 18 ou mais novo):\n1. Segure o ícone do app na tela inicial.\n2. Toque em “Exigir Face ID” (ou Touch ID / código).\n3. Escolha “Ocultar e exigir Face ID”.\nO app passa a ficar na pasta “Ocultos”, no fim da Biblioteca de Apps."
+              }
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <View style={styles.switchRow}>
@@ -290,6 +450,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: "#55383E",
+  },
+  actionButton: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    marginTop: 4,
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    backgroundColor: "#B12E58",
+  },
+  secondaryButton: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: "#B12E58",
+  },
+  secondaryButtonText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 13,
+    color: "#B12E58",
+  },
+  actionButtonText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 14,
+    color: "#FFFFFF",
   },
   switchRow: {
     flexDirection: "row",

@@ -1,17 +1,16 @@
 package expo.modules.discreeticon
 
+import android.app.StatusBarManager
 import android.content.ComponentName
 import android.content.Context
-import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.view.WindowManager
 import expo.modules.kotlin.exception.CodedException
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-
-private const val ALIAS_MARKER = ".discreet."
 
 class UnknownIconException(key: String) :
   CodedException("ERR_UNKNOWN_ICON", "Ícone '$key' não existe neste build.", null)
@@ -27,34 +26,49 @@ class DiscreetIconModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("DiscreetIcon")
 
-    // Chave do ícone explicitamente habilitado; null = nenhum foi escolhido (vale o padrão).
-    AsyncFunction("getActiveIcon") {
-      val pm = context.packageManager
-      listAliases().firstOrNull { alias ->
-        pm.getComponentEnabledSetting(ComponentName(context.packageName, alias.name)) ==
-          PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-      }?.let { keyOf(it) }
-    }
+    // Chave do ícone visível no launcher; null = app oculto.
+    AsyncFunction("getActiveIcon") { IconController.visibleKey(context) }
 
     AsyncFunction("setActiveIcon") { key: String ->
-      val pm = context.packageManager
-      val aliases = listAliases()
-      val target = aliases.firstOrNull { keyOf(it) == key } ?: throw UnknownIconException(key)
-
-      // Habilita o novo ANTES de desabilitar os outros: nunca fica sem ícone no launcher.
-      pm.setComponentEnabledSetting(
-        ComponentName(context.packageName, target.name),
-        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-        PackageManager.DONT_KILL_APP,
-      )
-      aliases.filter { it.name != target.name }.forEach { other ->
-        pm.setComponentEnabledSetting(
-          ComponentName(context.packageName, other.name),
-          PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-          PackageManager.DONT_KILL_APP,
-        )
-      }
+      if (!IconController.setActive(context, key)) throw UnknownIconException(key)
       key
+    }
+
+    // true = o app não tem ícone no launcher.
+    AsyncFunction("isIconHidden") { IconController.isHidden(context) }
+
+    // hidden=true tira o app do launcher; hidden=false devolve o último disfarce (ou fallbackKey).
+    AsyncFunction("setIconHidden") { hidden: Boolean, fallbackKey: String? ->
+      if (hidden) {
+        IconController.hide(context)
+      } else {
+        IconController.show(context, fallbackKey)
+      }
+      hidden
+    }
+
+    // Pede ao sistema (Android 13+) para adicionar o tile "abrir o app" às Configurações Rápidas.
+    // Resolve com: 2 = adicionado, 1 = já estava, 0 = recusado, -1 = sem suporte, <-1 = erro.
+    AsyncFunction("requestAddQuickTile") { promise: Promise ->
+      if (Build.VERSION.SDK_INT < 33) {
+        promise.resolve(-1)
+        return@AsyncFunction
+      }
+      val ctx = context
+      val res = ctx.resources
+      val iconId = res.getIdentifier("ic_discreet_tile", "drawable", ctx.packageName)
+      val labelId = res.getIdentifier("discreet_tile_label", "string", ctx.packageName)
+      val manager = ctx.getSystemService(StatusBarManager::class.java)
+      if (manager == null || iconId == 0 || labelId == 0) {
+        promise.resolve(-1)
+        return@AsyncFunction
+      }
+      manager.requestAddTileService(
+        ComponentName(ctx.packageName, OpenAppTileService::class.java.name),
+        ctx.getString(labelId),
+        Icon.createWithResource(ctx, iconId),
+        ctx.mainExecutor,
+      ) { result -> promise.resolve(result) }
     }
 
     // Esconde a prévia do app na tela de apps recentes.
@@ -73,20 +87,5 @@ class DiscreetIconModule : Module() {
       }
       true
     }
-  }
-
-  private fun keyOf(info: ActivityInfo): String = info.name.substringAfterLast(ALIAS_MARKER)
-
-  @Suppress("DEPRECATION")
-  private fun listAliases(): List<ActivityInfo> {
-    val pm = context.packageManager
-    val flags = PackageManager.GET_ACTIVITIES or PackageManager.MATCH_DISABLED_COMPONENTS
-    val info =
-      if (Build.VERSION.SDK_INT >= 33) {
-        pm.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(flags.toLong()))
-      } else {
-        pm.getPackageInfo(context.packageName, flags)
-      }
-    return info.activities.orEmpty().filter { it.name.contains(ALIAS_MARKER) }
   }
 }

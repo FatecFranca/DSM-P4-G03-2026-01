@@ -5,6 +5,7 @@ import catalog from "./discreetIcons.json";
  * discreetIcons.json porque o config plugin e o gerador de artes também a usam.
  */
 export type DiscreetIconKey =
+  | "original"
   | "notes"
   | "calculator"
   | "weather"
@@ -22,6 +23,9 @@ export type DiscreetIconEntry = {
 export type NativePlatform = "ios" | "android";
 
 export const DEFAULT_ICON_KEY = catalog.defaultKey as DiscreetIconKey;
+
+/** Código para discar no app Telefone e trazer o ícone de volta quando o app está oculto. */
+export const SECRET_CODE_DIAL = `*#*#${catalog.secretCode}#*#*`;
 
 export const DISCREET_ICONS: readonly DiscreetIconEntry[] = catalog.icons.map(
   ({ key, label, description }) => ({

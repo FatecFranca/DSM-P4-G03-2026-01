@@ -1,6 +1,19 @@
 {
-  "defaultKey": "notes",
+  "defaultKey": "original",
+  "secretCode": "7743",
   "icons": [
+    {
+      "key": "original",
+      "label": "ProtectHer",
+      "description": "Ícone original do app",
+      "source": {
+        "icon": "assets/icon.png",
+        "foreground": "assets/android-icon-foreground.png",
+        "background": "assets/android-icon-background.png",
+        "monochrome": "assets/android-icon-monochrome.png",
+        "generate": "brand"
+      }
+    },
     {
       "key": "notes",
       "label": "Notas",

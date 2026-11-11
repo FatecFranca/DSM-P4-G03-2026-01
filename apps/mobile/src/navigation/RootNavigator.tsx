@@ -1,4 +1,8 @@
-import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
+import {
+  DefaultTheme,
+  type LinkingOptions,
+  NavigationContainer,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useAuth } from "../auth/AuthContext";
@@ -19,6 +23,23 @@ import type { AppStackParamList, AuthStackParamList } from "./types";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
+
+/**
+ * Deep link da ação rápida (long-press) "Ocultar app" no Android:
+ * protecther://appearance?hide=1 abre Aparência já pedindo a confirmação.
+ * Mantenha em sincronia com plugins/withDiscreetIcons.js.
+ */
+const linking: LinkingOptions<AppStackParamList> = {
+  prefixes: ["protecther://"],
+  config: {
+    screens: {
+      Appearance: {
+        path: "appearance",
+        parse: { hide: (value: string) => value === "1" },
+      },
+    },
+  },
+};
 
 const DarkNavTheme = {
   ...DefaultTheme,
@@ -132,7 +153,11 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} theme={DarkNavTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={DarkNavTheme}
+      linking={linking}
+    >
       {state.status === "authenticated" ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

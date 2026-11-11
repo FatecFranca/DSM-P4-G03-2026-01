@@ -13,6 +13,11 @@ Saída (commitada no repositório, então o build não depende de Python):
         legacy-{48,72,96,144,192}.png      Android < 8 (sem ícone adaptativo)
     assets/icon.png + assets/android-icon-*.png  — ícone padrão do app (= disfarce padrão)
 
+O ícone "original" (entrada com "source" no catálogo) usa a identidade do app: degradê rosa +
+logo circular (assets/login/Icon.png) + "ProtectHer" em Italianno. Com "generate": "brand" o
+gerador (re)escreve assets/icon.png e assets/android-icon-*.png; o ícone original é redimensionado
+a partir deles.
+
 A lista de chaves/cores/nomes vive em src/appearance/discreetIcons.json.
 """
 
@@ -23,7 +28,7 @@ import math
 import shutil
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = json.loads((ROOT / "src/appearance/discreetIcons.json").read_text("utf-8"))
@@ -286,6 +291,111 @@ def save(img: Image.Image, path: Path):
     img.save(path, optimize=True)
 
 
+# --------------------------------------------------------------------------
+# Ícone original (identidade do app, igual à tela de login)
+# --------------------------------------------------------------------------
+
+BRAND_TOP = "#FFF1F6"
+BRAND_BOTTOM = "#F2B8CB"
+BRAND_TEXT = "#B12E58"
+BRAND_LOGO = ROOT / "assets/login/Icon.png"
+BRAND_FONT_CANDIDATES = [
+    ROOT / "node_modules/@expo-google-fonts/italianno/400Regular/Italianno_400Regular.ttf",
+    ROOT.parent.parent
+    / "node_modules/@expo-google-fonts/italianno/400Regular/Italianno_400Regular.ttf",
+]
+
+
+def brand_font(size: int) -> ImageFont.FreeTypeFont:
+    for path in BRAND_FONT_CANDIDATES:
+        if path.exists():
+            return ImageFont.truetype(str(path), size)
+    raise SystemExit("Fonte Italianno não encontrada (rode pnpm install).")
+
+
+def render_brand(canvas: int, fraction: float, mono: bool) -> Image.Image:
+    """Logo (círculo) + nome em script, centralizados (bloco todo) numa caixa `fraction`."""
+    img = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    box = canvas * fraction
+    off = (canvas - box) / 2
+    draw = ImageDraw.Draw(img)
+
+    text = "ProtectHer"
+    probe = brand_font(100)
+    width = probe.getbbox(text)[2] - probe.getbbox(text)[0]
+    font = brand_font(max(1, int(100 * box * 0.96 / width)))
+    left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
+    text_w, text_h = right - left, bottom - top
+
+    diameter = int(box * 0.50)
+    gap = box * 0.04
+    block_h = diameter + gap + text_h
+    logo_y = int(off + (box - block_h) / 2)
+    logo_x = int(off + (box - diameter) / 2)
+
+    logo = Image.open(BRAND_LOGO).convert("RGBA").resize((diameter, diameter), Image.LANCZOS)
+    circle = Image.new("L", (diameter * 4, diameter * 4), 0)
+    ImageDraw.Draw(circle).ellipse([0, 0, diameter * 4 - 1, diameter * 4 - 1], fill=255)
+    circle = circle.resize((diameter, diameter), Image.LANCZOS)
+    if mono:
+        img.paste(Image.new("RGBA", (diameter, diameter), WHITE), (logo_x, logo_y), circle)
+    else:
+        img.paste(logo, (logo_x, logo_y), circle)
+
+    tx = off + (box - text_w) / 2 - left
+    ty = logo_y + diameter + gap - top
+    draw.text((tx, ty), text, font=font, fill=WHITE if mono else rgba(BRAND_TEXT))
+    return img
+
+
+def render_brand_assets():
+    """Gera assets/icon.png + assets/android-icon-*.png (fonte do ícone `original`)."""
+    bg = gradient(WORK, BRAND_TOP, BRAND_BOTTOM)
+    full = Image.alpha_composite(bg, render_brand(WORK, FULL_GLYPH + 0.08, False))
+    save(downscale(full, 1024).convert("RGB"), ROOT / "assets/icon.png")
+    save(
+        downscale(render_brand(WORK, ADAPTIVE_GLYPH - 0.04, False), 1024),
+        ROOT / "assets/android-icon-foreground.png",
+    )
+    save(downscale(bg, 1024).convert("RGB"), ROOT / "assets/android-icon-background.png")
+    save(
+        downscale(render_brand(WORK, ADAPTIVE_GLYPH - 0.04, True), 1024),
+        ROOT / "assets/android-icon-monochrome.png",
+    )
+    save(downscale(full, 48), ROOT / "assets/favicon.png")
+
+
+def build_icon_from_source(entry: dict):
+    """Ícone com arte pronta (o original do app): só redimensiona, não desenha."""
+    key = entry["key"]
+    src = entry["source"]
+    out = OUT / key
+    if out.exists():
+        shutil.rmtree(out)
+
+    def load(name: str, mode: str) -> Image.Image:
+        return Image.open(ROOT / src[name]).convert(mode)
+
+    full = load("icon", "RGBA").resize((1024, 1024), Image.LANCZOS)
+    full_rgb = full.convert("RGB")  # iOS: sem alpha
+
+    save(downscale(full, 256), out / "preview.png")
+    for size in (120, 180, 152, 167):
+        save(full_rgb.resize((size, size), Image.LANCZOS), out / f"ios-{size}.png")
+
+    ad_fg = downscale(load("foreground", "RGBA"), 432)
+    ad_bg = downscale(load("background", "RGB"), 432)
+    ad_mono = downscale(load("monochrome", "RGBA"), 432)
+    save(ad_fg, out / "android-foreground.png")
+    save(ad_bg, out / "android-background.png")
+    save(ad_mono, out / "android-monochrome.png")
+
+    for size in (48, 72, 96, 144, 192):
+        legacy = downscale(full, size)
+        legacy.putalpha(rounded_mask(size, 0.22))
+        save(legacy, out / f"legacy-{size}.png")
+
+
 def build_icon(entry: dict):
     key = entry["key"]
     top, bottom = entry["background"]
@@ -320,24 +430,33 @@ def main():
     default_key = CATALOG["defaultKey"]
     default_assets = None
     for entry in CATALOG["icons"]:
-        assets = build_icon(entry)
-        if entry["key"] == default_key:
-            default_assets = (entry, assets)
+        if "source" in entry:
+            if entry["source"].get("generate") == "brand":
+                render_brand_assets()
+            build_icon_from_source(entry)
+            if entry["key"] == default_key:
+                default_assets = (entry, None)
+        else:
+            assets = build_icon(entry)
+            if entry["key"] == default_key:
+                default_assets = (entry, assets)
         print("ok", entry["key"])
 
     # Ícone "principal" do app (Expo: icon + adaptiveIcon) = disfarce padrão.
     assert default_assets, "defaultKey não encontrado no catálogo"
-    entry, (full_rgb, fg, bg, mono) = default_assets
-    save(full_rgb, ROOT / "assets/icon.png")
-    big_fg = downscale(render_glyph(entry["key"], ADAPTIVE_GLYPH, False), 1024)
-    big_bg = downscale(gradient(WORK, *entry["background"]), 1024).convert("RGB")
-    big_mono = downscale(render_glyph(entry["key"], ADAPTIVE_GLYPH, True), 1024)
-    save(big_fg, ROOT / "assets/android-icon-foreground.png")
-    save(big_bg, ROOT / "assets/android-icon-background.png")
-    save(big_mono, ROOT / "assets/android-icon-monochrome.png")
-    save(downscale(Image.alpha_composite(
-        gradient(WORK, *entry["background"]),
-        render_glyph(entry["key"], FULL_GLYPH, False)), 48), ROOT / "assets/favicon.png")
+    entry, assets = default_assets
+    if assets is not None:
+        full_rgb, fg, bg, mono = assets
+        save(full_rgb, ROOT / "assets/icon.png")
+        big_fg = downscale(render_glyph(entry["key"], ADAPTIVE_GLYPH, False), 1024)
+        big_bg = downscale(gradient(WORK, *entry["background"]), 1024).convert("RGB")
+        big_mono = downscale(render_glyph(entry["key"], ADAPTIVE_GLYPH, True), 1024)
+        save(big_fg, ROOT / "assets/android-icon-foreground.png")
+        save(big_bg, ROOT / "assets/android-icon-background.png")
+        save(big_mono, ROOT / "assets/android-icon-monochrome.png")
+        save(downscale(Image.alpha_composite(
+            gradient(WORK, *entry["background"]),
+            render_glyph(entry["key"], FULL_GLYPH, False)), 48), ROOT / "assets/favicon.png")
 
     # Splash neutra: totalmente transparente (só a cor de fundo aparece).
     save(Image.new("RGBA", (1024, 1024), (0, 0, 0, 0)), ROOT / "assets/splash-icon.png")

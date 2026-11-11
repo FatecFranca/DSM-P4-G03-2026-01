@@ -1,8 +1,8 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 import discreetIcons from "./src/appearance/discreetIcons.json";
 
-// O app nasce com o nome do disfarce padrão (aparece em Configurações > Apps):
-// "ProtectHer" nunca deve ser o rótulo visível para quem olha o celular.
+// O app nasce com o ícone e o nome originais (disfarce padrão = "original"). Os demais
+// disfarces só valem se o usuário escolhê-los em Aparência.
 const defaultDiscreetIcon = discreetIcons.icons.find(
   (icon) => icon.key === discreetIcons.defaultKey,
 );
@@ -21,8 +21,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: defaultDiscreetIcon?.label ?? "Notas",
+    name: defaultDiscreetIcon?.label ?? "ProtectHer",
     slug: "protecther-mobile",
+    // Deep link da ação rápida "Ocultar app" (ver plugins/withDiscreetIcons.js).
+    scheme: "protecther",
     ios: {
       ...config.ios,
       bundleIdentifier:

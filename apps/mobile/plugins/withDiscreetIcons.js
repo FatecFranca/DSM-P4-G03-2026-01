@@ -8,6 +8,10 @@
  *  - tira o LAUNCHER da MainActivity e cria um <activity-alias> por disfarce
  *    (ícone adaptativo + monocromático + legado, e rótulo próprio);
  *  - só o alias padrão nasce habilitado; o módulo nativo `DiscreetIcon` alterna em runtime.
+ *  - rota de volta: tile nas Configurações Rápidas (OpenAppTileService) + código do discador.
+ *  - "ocultar app" = todos os aliases desabilitados (sem LAUNCHER nem INFO, senão o
+ *    launcher ainda lista o app). Ação rápida (long-press) "Ocultar app"
+ *    via static shortcut + receiver do código secreto (secretCode) para voltar.
  *
  * iOS
  *  - copia os PNGs para o projeto Xcode e registra CFBundleAlternateIcons.
@@ -28,6 +32,11 @@ const catalog = require("../src/appearance/discreetIcons.json");
 
 const ASSETS_DIR = path.join(projectRoot, "assets", "discreet-icons");
 const ALIAS_MARKER = ".discreet.";
+const TILE_SERVICE = "expo.modules.discreeticon.OpenAppTileService";
+const TILE_LABEL = "ProtectHer";
+const SECRET_CODE_RECEIVER = "expo.modules.discreeticon.SecretCodeReceiver";
+// Precisa bater com `scheme` (app.config.ts) e com o linking de RootNavigator.
+const DEEP_LINK_HIDE = "protecther://appearance?hide=1";
 const LEGACY_DENSITIES = {
   mdpi: 48,
   hdpi: 72,
@@ -96,7 +105,10 @@ function withAndroidAliases(baseConfig) {
     );
 
     const aliases = (app["activity-alias"] ?? []).filter(
-      (a) => !a.$["android:name"].includes(ALIAS_MARKER),
+      (a) =>
+        !a.$["android:name"].includes(ALIAS_MARKER) &&
+        // legado: alias INFO de uma versão anterior (o launcher o listava como ícone)
+        !a.$["android:name"].endsWith(".RecoveryEntry"),
     );
     for (const icon of catalog.icons) {
       aliases.push({
@@ -108,6 +120,15 @@ function withAndroidAliases(baseConfig) {
           "android:icon": `@mipmap/${resName(icon.key)}`,
           "android:label": icon.label,
         },
+        // Ação rápida ao segurar o ícone: "Ocultar app".
+        "meta-data": [
+          {
+            $: {
+              "android:name": "android.app.shortcuts",
+              "android:resource": "@xml/discreet_shortcuts",
+            },
+          },
+        ],
         "intent-filter": [
           {
             action: [{ $: { "android:name": "android.intent.action.MAIN" } }],
@@ -119,6 +140,59 @@ function withAndroidAliases(baseConfig) {
       });
     }
     app["activity-alias"] = aliases;
+
+    // Rota de volta principal com o app oculto: tile nas Configurações Rápidas que abre o app.
+    app.service = (app.service ?? []).filter(
+      (s) => s.$["android:name"] !== TILE_SERVICE,
+    );
+    app.service.push({
+      $: {
+        "android:name": TILE_SERVICE,
+        "android:exported": "true",
+        "android:label": "@string/discreet_tile_label",
+        "android:icon": "@drawable/ic_discreet_tile",
+        "android:permission": "android.permission.BIND_QUICK_SETTINGS_TILE",
+      },
+      "intent-filter": [
+        {
+          action: [
+            {
+              $: {
+                "android:name": "android.service.quicksettings.action.QS_TILE",
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    // Rota extra: discar *#*#<código>#*#* no app Telefone.
+    app.receiver = (app.receiver ?? []).filter(
+      (r) => r.$["android:name"] !== SECRET_CODE_RECEIVER,
+    );
+    app.receiver.push({
+      $: {
+        "android:name": SECRET_CODE_RECEIVER,
+        "android:exported": "true",
+      },
+      "intent-filter": [
+        {
+          action: [
+            {
+              $: { "android:name": "android.provider.Telephony.SECRET_CODE" },
+            },
+          ],
+          data: [
+            {
+              $: {
+                "android:scheme": "android_secret_code",
+                "android:host": catalog.secretCode,
+              },
+            },
+          ],
+        },
+      ],
+    });
     return cfg;
   });
 
@@ -132,6 +206,57 @@ function withAndroidAliases(baseConfig) {
         "main",
         "res",
       );
+      // Atalho estático (long-press): abre Aparência pedindo a confirmação para ocultar.
+      const shortcuts = path.join(res, "xml", "discreet_shortcuts.xml");
+      fs.mkdirSync(path.dirname(shortcuts), { recursive: true });
+      fs.writeFileSync(
+        shortcuts,
+        `<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="hide_app"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/discreet_shortcut_hide_short"
+        android:shortcutLongLabel="@string/discreet_shortcut_hide_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="${DEEP_LINK_HIDE}"
+            android:targetPackage="${androidPackage}"
+            android:targetClass="${androidPackage}.MainActivity"/>
+    </shortcut>
+</shortcuts>
+`,
+      );
+      const strings = path.join(res, "values", "discreet_shortcuts.xml");
+      fs.mkdirSync(path.dirname(strings), { recursive: true });
+      fs.writeFileSync(
+        strings,
+        `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="discreet_shortcut_hide_short">Ocultar app</string>
+    <string name="discreet_shortcut_hide_long">Ocultar app da tela inicial</string>
+    <string name="discreet_tile_label">${TILE_LABEL}</string>
+</resources>
+`,
+      );
+
+      const tileIcon = path.join(res, "drawable", "ic_discreet_tile.xml");
+      fs.mkdirSync(path.dirname(tileIcon), { recursive: true });
+      fs.writeFileSync(
+        tileIcon,
+        `<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2L4,5v6c0,5.55 3.84,10.74 8,12 4.16,-1.26 8,-6.45 8,-12V5L12,2z"/>
+</vector>
+`,
+      );
+
       for (const { key } of catalog.icons) {
         const src = path.join(ASSETS_DIR, key);
         const name = resName(key);

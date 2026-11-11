@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ICON_KEY,
   DISCREET_ICONS,
+  SECRET_CODE_DIAL,
   fromNativeIconName,
   isDiscreetIconKey,
   toNativeIconName,
@@ -18,9 +19,13 @@ describe("catálogo de ícones discretos", () => {
     }
   });
 
-  it("nenhum nome ou descrição entrega que é um app de proteção", () => {
+  it("o padrão é o ícone original; só os disfarces têm nomes que não entregam o app", () => {
+    expect(DEFAULT_ICON_KEY).toBe("original");
     const forbidden = /protec|prote[çc][ãa]o|sos|emerg|safe|alert|seguran/i;
     for (const icon of catalog.icons) {
+      if (icon.key === DEFAULT_ICON_KEY) {
+        continue;
+      }
       expect(icon.label).not.toMatch(forbidden);
     }
   });
@@ -35,6 +40,11 @@ describe("catálogo de ícones discretos", () => {
       DEFAULT_ICON_KEY,
     );
     expect(toNativeIconName("clock", "android")).toBe("clock");
+  });
+
+  it("o código secreto é numérico e é exibido no formato de discador", () => {
+    expect(catalog.secretCode).toMatch(/^\d{4,}$/);
+    expect(SECRET_CODE_DIAL).toBe(`*#*#${catalog.secretCode}#*#*`);
   });
 
   it("valores nativos desconhecidos caem no padrão", () => {
