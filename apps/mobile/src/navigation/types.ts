@@ -20,6 +20,5 @@ export type AppStackParamList = {
   };
   DeviceManagement: undefined;
   Appearance: { hide?: boolean } | undefined;
-  ExperimentDashboard: undefined;
   QuickSos: undefined;
 };

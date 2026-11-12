@@ -25,8 +25,7 @@ import { readMicPermission } from "../audio/micPermission";
 import { onSosAudioCommand, sendSosAudioCommand } from "../audio/sosAudioStore";
 import { useAuth } from "../auth/AuthContext";
 import { useEspButtonBleState } from "../ble/EspButtonBleContext";
-import { resolveSosCircleScale, useSosExperiment } from "../experiments";
-import { formatApiError } from "../lib/apiError";
+import { formatApiError, formatValidationError } from "../lib/apiError";
 import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Shadow, Spacing } from "../theme";
@@ -44,10 +43,8 @@ export function HomeScreen({ navigation }: Props) {
   const isSmallScreen = height < 700 || width < 360;
   const isVeryNarrow = width < 350;
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
-  const { variantId, trackConversion } = useSosExperiment();
-  const circleScale = resolveSosCircleScale(variantId);
-  const outerSize = (isSmallScreen ? 178 : 198) * circleScale;
-  const innerSize = (isSmallScreen ? 148 : 168) * circleScale;
+  const outerSize = isSmallScreen ? 178 : 198;
+  const innerSize = isSmallScreen ? 148 : 168;
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -114,7 +111,7 @@ export function HomeScreen({ navigation }: Props) {
     setSosError(null);
     const parsed = StartAlertRequestSchema.safeParse({ mode: "visible" });
     if (!parsed.success) {
-      setSosError(parsed.error.message);
+      setSosError(formatValidationError(parsed.error));
       return;
     }
     setLoading(true);
@@ -133,7 +130,6 @@ export function HomeScreen({ navigation }: Props) {
         setSosError("Resposta inválida da API");
         return;
       }
-      trackConversion("sos_time_to_trigger");
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
       // Liga o áudio do SOS já (com o app aberto o sistema permite o microfone).
       publishActiveAlert(body.data.alert.id);
@@ -143,7 +139,7 @@ export function HomeScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [activeAlertId, getAccessToken, navigation, trackConversion]);
+  }, [activeAlertId, getAccessToken, navigation]);
 
   if (state.status !== "authenticated") {
     return null;
@@ -332,17 +328,7 @@ export function HomeScreen({ navigation }: Props) {
             ]}
             onPress={() => navigation.navigate("DeviceManagement")}
           >
-            <Text style={styles.actionLabel}>Dispositivos{"\n"}conectados</Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.actionCard,
-              isVeryNarrow ? styles.actionCardNarrow : undefined,
-            ]}
-            onPress={() => navigation.navigate("ExperimentDashboard")}
-          >
-            <Text style={styles.actionLabel}>Resultados{"\n"}A/B</Text>
+            <Text style={styles.actionLabel}>Minhas{"\n"}joias</Text>
           </Pressable>
         </View>
       </ScrollView>

@@ -26,6 +26,21 @@ type UseEspButtonBleOptions = {
 const MAX_RECONNECT_DELAY = 30000;
 const BASE_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_ATTEMPTS = 10;
+const BLE_ERROR_BLUETOOTH_UNSUPPORTED = 100;
+
+export const UNSUPPORTED_DEVICE_MESSAGE =
+  "Dispositivo não compatível com a Joia";
+
+/** Troca o erro cru do ble-plx por um texto claro quando o aparelho não tem BLE. */
+function describeBleError(bleError: BleError): string {
+  if (
+    bleError.errorCode === BLE_ERROR_BLUETOOTH_UNSUPPORTED ||
+    /unsupported/i.test(bleError.message)
+  ) {
+    return UNSUPPORTED_DEVICE_MESSAGE;
+  }
+  return bleError.message;
+}
 
 export function useEspButtonBle(
   options: UseEspButtonBleOptions = {},
@@ -191,7 +206,7 @@ export function useEspButtonBle(
                 console.log("erro no monitoramento:", monitorError.message);
               }
               if (mountedRef.current && !cancelled) {
-                setError(monitorError.message);
+                setError(describeBleError(monitorError));
                 setStatus("Erro de conexão");
                 setIsConnected(false);
               }
@@ -281,7 +296,7 @@ export function useEspButtonBle(
         reconnectTimeoutRef.current = setTimeout(() => {
           if (mountedRef.current) {
             isScanningRef.current = false;
-            setStatus("Buscando dispositivo BLE...");
+            setStatus("Buscando sua Joia...");
             bleManager.startDeviceScan(
               [SERVICE_UUID],
               null,
@@ -320,7 +335,7 @@ export function useEspButtonBle(
       if (isScanningRef.current) return;
       isScanningRef.current = true;
 
-      setStatus("Buscando dispositivo BLE...");
+      setStatus("Buscando sua Joia...");
       setError(null);
       heartbeatSentRef.current = false;
       console.log("Iniciando busca BLE...");
@@ -369,7 +384,7 @@ export function useEspButtonBle(
           if (scanError) {
             console.warn("⚠️ Erro no scan BLE:", scanError.message);
             if (!cancelled && mountedRef.current) {
-              setError(scanError.message);
+              setError(describeBleError(scanError));
               setStatus("Erro de conexão");
             }
             bleManager.stopDeviceScan();

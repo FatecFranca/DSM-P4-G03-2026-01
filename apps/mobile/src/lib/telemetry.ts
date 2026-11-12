@@ -13,8 +13,6 @@ export type MobileTelemetryEvent =
   | "push_token_registered"
   | "push_token_register_failed"
   | "push_notification_received"
-  | "experiment_exposed"
-  | "experiment_converted"
   | "audio_recording_started"
   | "audio_recording_stopped"
   | "audio_recording_failed"

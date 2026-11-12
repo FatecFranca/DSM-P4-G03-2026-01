@@ -220,6 +220,7 @@ export function AppearanceScreen({ navigation, route }: Props) {
           },
         ]}
       >
+        <Text style={styles.brand}>Protect Her</Text>
         <Text style={styles.pageTitle}>Aparência e discrição</Text>
         <Text style={styles.desc}>
           O app usa o ícone original por padrão. Se quiser deixá-lo mais
@@ -339,15 +340,6 @@ export function AppearanceScreen({ navigation, route }: Props) {
             />
           </View>
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>O que isso não esconde</Text>
-          <Text style={styles.cardDesc}>
-            {
-              "• Em Configurações do celular, a lista de apps instalados mostra o nome padrão do app.\n• A loja de apps (Play Store / App Store) guarda o histórico de instalação.\n• Ao abrir o app, a tela dele continua sendo a do ProtectHer.\n• No iPhone, o sistema mostra um aviso ao trocar o ícone."
-            }
-          </Text>
-        </View>
       </ScrollView>
     </View>
   );
@@ -367,12 +359,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: 16,
   },
+  brand: {
+    fontFamily: "Italianno_400Regular",
+    fontSize: 36,
+    color: "#DA8295",
+    lineHeight: 40,
+  },
   pageTitle: {
     fontFamily: "Poppins_600SemiBold",
-    fontSize: 22,
+    fontSize: 24,
     lineHeight: 30,
     color: "#55383E",
+    marginTop: -4,
     textAlign: "center",
+    alignSelf: "center",
+    width: "100%",
   },
   desc: {
     fontFamily: "Poppins_400Regular",

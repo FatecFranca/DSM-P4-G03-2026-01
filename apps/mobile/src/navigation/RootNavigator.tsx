@@ -12,7 +12,6 @@ import { ContactAlertDetailScreen } from "../screens/ContactAlertDetailScreen";
 import { ContactAlertsFeedScreen } from "../screens/ContactAlertsFeedScreen";
 import { ContactsScreen } from "../screens/ContactsScreen";
 import { DeviceManagementScreen } from "../screens/DeviceManagementScreen";
-import { ExperimentDashboardScreen } from "../screens/ExperimentDashboardScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { QuickSosScreen } from "../screens/QuickSosScreen";
@@ -126,17 +125,12 @@ function AppNavigator() {
       <AppStack.Screen
         name="DeviceManagement"
         component={DeviceManagementScreen}
-        options={{ title: "Dispositivos BLE" }}
+        options={{ title: "Minhas joias" }}
       />
       <AppStack.Screen
         name="Appearance"
         component={AppearanceScreen}
         options={{ title: "Aparência" }}
-      />
-      <AppStack.Screen
-        name="ExperimentDashboard"
-        component={ExperimentDashboardScreen}
-        options={{ title: "Resultados A/B" }}
       />
       <AppStack.Screen
         name="QuickSos"

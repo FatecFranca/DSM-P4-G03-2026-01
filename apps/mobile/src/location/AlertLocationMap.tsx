@@ -170,12 +170,6 @@ export function AlertLocationMap({
         >
           <Text style={styles.centerBtnText}>Centralizar</Text>
         </Pressable>
-        <View style={styles.mapOverlay}>
-          <Text style={styles.mapOverlayText}>
-            {points.length} ponto{points.length !== 1 ? "s" : ""} capturado
-            {points.length !== 1 ? "s" : ""}
-          </Text>
-        </View>
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -195,19 +189,6 @@ const styles = StyleSheet.create({
   },
   map: {
     height: Dimensions.get("window").height * 0.62,
-  },
-  mapOverlay: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: "#E8B8C0",
-  },
-  mapOverlayText: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 13,
-    color: "#55383E",
-    textAlign: "center",
   },
   centerBtn: {
     position: "absolute",
