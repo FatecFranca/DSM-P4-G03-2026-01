@@ -128,6 +128,9 @@ importers:
       expo-font:
         specifier: ~14.0.9
         version: 14.0.12(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)
+      expo-glass-effect:
+        specifier: ~55.0.11
+        version: 55.0.11(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)
       expo-linear-gradient:
         specifier: ~15.0.7
         version: 15.0.8(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)
@@ -2634,6 +2637,13 @@ packages:
 
   expo-font@55.0.8:
     resolution: {integrity: sha512-WyP75pnKqhLNktYwDn3xKAUNt5rLihRDv8XWGhhz6VEhVqypixpT86NA3uGtiDTlM3gGjhrYCY7o7ypXgCUOZg==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
+
+  expo-glass-effect@55.0.11:
+    resolution: {integrity: sha512-wqq7GUOqSkfoFJzreZvBG0jzjsq5c582m3glhWSjcmIuByxXXWp6j6GY6hyFuYKzpOXhbuvusVxGCQi0yWnp3g==}
     peerDependencies:
       expo: '*'
       react: '*'
@@ -7089,6 +7099,12 @@ snapshots:
     dependencies:
       expo: 55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-native-webview@13.16.0(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       fontfaceobserver: 2.3.0
+      react: 19.2.0
+      react-native: 0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0)
+
+  expo-glass-effect@55.0.11(expo@55.0.26)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0):
+    dependencies:
+      expo: 55.0.26(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(react-native-webview@13.16.0(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       react: 19.2.0
       react-native: 0.83.6(@babel/core@7.29.0)(@types/react@19.2.15)(react@19.2.0)
 

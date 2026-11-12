@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { type StyleProp, StyleSheet, type ViewStyle } from "react-native";
 import { Colors, Radius, Shadow, Spacing } from "../theme";
+import { GlassSurface } from "./GlassSurface";
 
 type Props = {
   children: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   variant?: "default" | "danger" | "safe" | "success";
 };
 
@@ -19,17 +20,15 @@ export function GlassCard({ children, style, variant = "default" }: Props) {
           : Colors.border;
 
   return (
-    <View style={[styles.card, { borderColor }, Shadow.sm, style]}>
+    <GlassSurface style={[styles.card, { borderColor }, Shadow.sm, style]}>
       {children}
-    </View>
+    </GlassSurface>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
-    borderWidth: 1,
     padding: Spacing.lg,
   },
 });

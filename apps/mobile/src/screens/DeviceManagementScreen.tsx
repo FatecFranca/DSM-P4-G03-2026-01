@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { GlassSurface } from "../components/GlassSurface";
 import { useEspDeviceStorage } from "../hooks/useEspDeviceStorage";
 import {
   CHARACTERISTIC_UUID,
@@ -186,7 +187,7 @@ export function DeviceManagementScreen() {
   };
 
   const renderDevice = (item: BleDevice) => (
-    <View key={item.id} style={styles.deviceCard}>
+    <GlassSurface key={item.id} style={styles.deviceCard}>
       <View style={styles.deviceHeader}>
         <View style={styles.deviceInfo}>
           <Text style={styles.deviceName}>{item.deviceName}</Text>
@@ -222,7 +223,7 @@ export function DeviceManagementScreen() {
       >
         <Text style={styles.unpairButtonText}>Desvincular</Text>
       </Pressable>
-    </View>
+    </GlassSurface>
   );
 
   if (loading && devices.length === 0) {
@@ -434,9 +435,7 @@ const styles = StyleSheet.create({
   },
   deviceCard: {
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: "#E2A2AE",
-    backgroundColor: "rgba(255,208,225,0.45)",
+    overflow: "hidden",
     paddingHorizontal: 12,
     paddingVertical: 10,
   },

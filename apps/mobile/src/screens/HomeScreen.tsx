@@ -25,6 +25,7 @@ import { readMicPermission } from "../audio/micPermission";
 import { onSosAudioCommand, sendSosAudioCommand } from "../audio/sosAudioStore";
 import { useAuth } from "../auth/AuthContext";
 import { useEspButtonBleState } from "../ble/EspButtonBleContext";
+import { GlassSurface } from "../components/GlassSurface";
 import { formatApiError, formatValidationError } from "../lib/apiError";
 import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import type { AppStackParamList } from "../navigation/types";
@@ -283,7 +284,7 @@ export function HomeScreen({ navigation }: Props) {
             </Pressable>
           )}
 
-          <View style={styles.bleStatusCard}>
+          <GlassSurface style={styles.bleStatusCard}>
             <Text
               style={[
                 styles.bleStatusText,
@@ -292,7 +293,7 @@ export function HomeScreen({ navigation }: Props) {
             >
               {bleStatusText}
             </Text>
-          </View>
+          </GlassSurface>
         </View>
 
         <View
@@ -301,35 +302,50 @@ export function HomeScreen({ navigation }: Props) {
             isVeryNarrow ? styles.quickActionsNarrow : undefined,
           ]}
         >
-          <Pressable
+          <GlassSurface
+            interactive
             style={[
-              styles.actionCard,
+              styles.actionSurface,
               isVeryNarrow ? styles.actionCardNarrow : undefined,
             ]}
-            onPress={() => navigation.navigate("Contacts")}
           >
-            <Text style={styles.actionLabel}>Contatos</Text>
-          </Pressable>
+            <Pressable
+              style={styles.actionCard}
+              onPress={() => navigation.navigate("Contacts")}
+            >
+              <Text style={styles.actionLabel}>Contatos</Text>
+            </Pressable>
+          </GlassSurface>
 
-          <Pressable
+          <GlassSurface
+            interactive
             style={[
-              styles.actionCard,
+              styles.actionSurface,
               isVeryNarrow ? styles.actionCardNarrow : undefined,
             ]}
-            onPress={() => navigation.navigate("ContactAlertsFeed")}
           >
-            <Text style={styles.actionLabel}>Alertas</Text>
-          </Pressable>
+            <Pressable
+              style={styles.actionCard}
+              onPress={() => navigation.navigate("ContactAlertsFeed")}
+            >
+              <Text style={styles.actionLabel}>Alertas</Text>
+            </Pressable>
+          </GlassSurface>
 
-          <Pressable
+          <GlassSurface
+            interactive
             style={[
-              styles.actionCard,
+              styles.actionSurface,
               isVeryNarrow ? styles.actionCardNarrow : undefined,
             ]}
-            onPress={() => navigation.navigate("DeviceManagement")}
           >
-            <Text style={styles.actionLabel}>Minhas{"\n"}joias</Text>
-          </Pressable>
+            <Pressable
+              style={styles.actionCard}
+              onPress={() => navigation.navigate("DeviceManagement")}
+            >
+              <Text style={styles.actionLabel}>Minhas{"\n"}joias</Text>
+            </Pressable>
+          </GlassSurface>
         </View>
       </ScrollView>
     </View>
@@ -465,9 +481,6 @@ const styles = StyleSheet.create({
   bleStatusCard: {
     width: "100%",
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: "#D9A2AE",
-    backgroundColor: "rgba(255,221,225,0.6)",
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginTop: 6,
@@ -503,10 +516,14 @@ const styles = StyleSheet.create({
   quickActionsNarrow: {
     flexWrap: "wrap",
   },
+  actionSurface: {
+    flex: 1,
+    borderRadius: Radius.md,
+    overflow: "hidden",
+  },
   actionCard: {
     flex: 1,
     minHeight: 66,
-    backgroundColor: "#C88B95",
     borderRadius: Radius.md,
     paddingHorizontal: 8,
     paddingVertical: 10,
@@ -521,7 +538,7 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins_400Regular",
     fontSize: 13,
     lineHeight: 17,
-    color: "#FFFFFF",
+    color: "#7D1F44",
     textAlign: "center",
   },
   buttonPressed: {

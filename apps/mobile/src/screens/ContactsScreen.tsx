@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { GlassSurface } from "../components/GlassSurface";
 import { formatApiError, formatValidationError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Spacing } from "../theme";
@@ -196,22 +197,24 @@ export function ContactsScreen(_props: Props) {
     return (
       <View style={styles.contactList}>
         {items.map((c) => (
-          <View key={c.id} style={styles.contactRow}>
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactName}>{c.name}</Text>
-              <Text style={styles.contactEmail}>{c.email}</Text>
-              <Text style={styles.contactSince}>Desde {c.since}</Text>
+          <GlassSurface key={c.id} style={styles.contactSurface}>
+            <View style={styles.contactRow}>
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactName}>{c.name}</Text>
+                <Text style={styles.contactEmail}>{c.email}</Text>
+                <Text style={styles.contactSince}>Desde {c.since}</Text>
+              </View>
+              <Pressable
+                onPress={() => confirmRemove(c, role)}
+                style={({ pressed }) => [
+                  styles.removeButton,
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <Text style={styles.removeButtonText}>Remover</Text>
+              </Pressable>
             </View>
-            <Pressable
-              onPress={() => confirmRemove(c, role)}
-              style={({ pressed }) => [
-                styles.removeButton,
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <Text style={styles.removeButtonText}>Remover</Text>
-            </Pressable>
-          </View>
+          </GlassSurface>
         ))}
       </View>
     );
@@ -426,14 +429,14 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 4,
   },
+  contactSurface: {
+    borderRadius: Radius.md,
+    overflow: "hidden",
+  },
   contactRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "rgba(255,221,225,0.6)",
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: "#E8B8C0",
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
