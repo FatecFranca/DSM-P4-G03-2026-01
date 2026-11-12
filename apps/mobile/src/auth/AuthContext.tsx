@@ -9,6 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { onUnauthorized } from "../api/client";
 import { clearSession, readSession, saveSession } from "./sessionStorage";
 
 type AuthState =
@@ -56,6 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearSession();
     setState({ status: "anonymous" });
   }, []);
+
+  // Sessão inválida no servidor: volta para o login em vez de falhar em cada ação.
+  useEffect(
+    () =>
+      onUnauthorized(() => {
+        void clearSession().finally(() => setState({ status: "anonymous" }));
+      }),
+    [],
+  );
 
   const getAccessToken = useCallback((): string | null => {
     if (state.status !== "authenticated") {

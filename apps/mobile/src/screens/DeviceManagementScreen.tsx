@@ -61,7 +61,7 @@ export function DeviceManagementScreen() {
         accessToken: token,
       });
       if (!result.ok) {
-        setError("Falha ao carregar dispositivos");
+        setError("Falha ao carregar suas joias");
         return;
       }
       const parsed = ListBleDevicesResponseSchema.safeParse(result.data);
@@ -103,7 +103,7 @@ export function DeviceManagementScreen() {
       });
 
       if (!result.ok) {
-        setError("Falha ao parear dispositivo");
+        setError("Falha ao parear a joia");
         return;
       }
 
@@ -133,10 +133,10 @@ export function DeviceManagementScreen() {
         console.log("Heartbeat pós-pareamento falhou, ignorando");
       }
 
-      Alert.alert("Sucesso", "Dispositivo pareado com sucesso!");
+      Alert.alert("Sucesso", "Joia pareada com sucesso!");
       void loadDevices();
     } catch (err) {
-      setError("Erro ao parear dispositivo");
+      setError("Erro ao parear a joia");
     } finally {
       setPairing(false);
     }
@@ -144,8 +144,8 @@ export function DeviceManagementScreen() {
 
   const unpairDevice = async (deviceId: string) => {
     Alert.alert(
-      "Desvincular dispositivo",
-      "Tem certeza que deseja desvincular este dispositivo?",
+      "Desvincular joia",
+      "Tem certeza que deseja desvincular esta joia?",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -165,14 +165,14 @@ export function DeviceManagementScreen() {
               );
 
               if (!result.ok) {
-                setError("Falha ao desvincular dispositivo");
+                setError("Falha ao desvincular a joia");
                 return;
               }
 
               await clearDevice();
               void loadDevices();
             } catch {
-              setError("Erro ao desvincular dispositivo");
+              setError("Erro ao desvincular a joia");
             }
           },
         },
@@ -258,22 +258,20 @@ export function DeviceManagementScreen() {
         <Text
           style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}
         >
-          Dispositivos BLE
+          Minhas joias
         </Text>
-        <Text style={styles.subtitle}>Gerencie seus dispositivos pareados</Text>
+        <Text style={styles.subtitle}>Gerencie suas joias pareadas</Text>
 
         {savedDevice ? (
           <View style={styles.pairedBanner}>
             <View style={styles.bannerIconCircle}>
               <Text style={styles.bannerIcon}>✓</Text>
             </View>
-            <Text style={styles.pairedText}>
-              Dispositivo Pareado localmente
-            </Text>
+            <Text style={styles.pairedText}>Joia pareada localmente</Text>
           </View>
         ) : (
           <View style={styles.unpairedBanner}>
-            <Text style={styles.unpairedText}>Nenhum dispositivo pareado</Text>
+            <Text style={styles.unpairedText}>Nenhuma joia pareada</Text>
             <Pressable
               onPress={() => void pairDevice()}
               disabled={pairing}
@@ -285,7 +283,7 @@ export function DeviceManagementScreen() {
               {pairing ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.pairButtonText}>Parear dispositivo</Text>
+                <Text style={styles.pairButtonText}>Parear joia</Text>
               )}
             </Pressable>
           </View>
@@ -293,11 +291,11 @@ export function DeviceManagementScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Text style={styles.sectionTitle}>Dispositivos vinculados</Text>
+        <Text style={styles.sectionTitle}>Joias vinculadas</Text>
 
         {devices.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Nenhum dispositivo registrado</Text>
+            <Text style={styles.emptyText}>Nenhuma joia registrada</Text>
           </View>
         ) : (
           <View style={styles.list}>

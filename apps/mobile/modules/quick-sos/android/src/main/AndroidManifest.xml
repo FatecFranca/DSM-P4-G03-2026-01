@@ -1,0 +1,46 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+  <application>
+    <!-- Escuta liga/desliga da tela (botão power) para o gesto de SOS rápido. -->
+    <service
+      android:name="expo.modules.quicksos.PowerButtonService"
+      android:exported="false"
+      android:foregroundServiceType="specialUse">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="Personal safety: detects a power-button press pattern (screen on/off) chosen by the user to send an emergency alert to trusted contacts." />
+    </service>
+
+    <!-- Bloco "Pedir ajuda" nas Configurações Rápidas (funciona com a tela bloqueada). -->
+    <service
+      android:name="expo.modules.quicksos.QuickSosTileService"
+      android:exported="true"
+      android:icon="@drawable/ic_quick_sos"
+      android:label="@string/quick_sos_tile_label"
+      android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE" />
+      </intent-filter>
+    </service>
+
+    <receiver
+      android:name="expo.modules.quicksos.QuickSosBootReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+
+    <receiver
+      android:name="expo.modules.quicksos.QuickSosActionReceiver"
+      android:exported="false" />
+  </application>
+</manifest>

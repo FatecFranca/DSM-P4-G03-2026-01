@@ -1,15 +1,20 @@
-import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
+import {
+  DefaultTheme,
+  type LinkingOptions,
+  NavigationContainer,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useAuth } from "../auth/AuthContext";
 import { ActiveAlertScreen } from "../screens/ActiveAlertScreen";
+import { AppearanceScreen } from "../screens/AppearanceScreen";
 import { ContactAlertDetailScreen } from "../screens/ContactAlertDetailScreen";
 import { ContactAlertsFeedScreen } from "../screens/ContactAlertsFeedScreen";
 import { ContactsScreen } from "../screens/ContactsScreen";
 import { DeviceManagementScreen } from "../screens/DeviceManagementScreen";
-import { ExperimentDashboardScreen } from "../screens/ExperimentDashboardScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
+import { QuickSosScreen } from "../screens/QuickSosScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
 import { SosScreen } from "../screens/SosScreen";
 import { Colors, Typography } from "../theme";
@@ -18,6 +23,23 @@ import type { AppStackParamList, AuthStackParamList } from "./types";
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const AppStack = createNativeStackNavigator<AppStackParamList>();
+
+/**
+ * Deep link da ação rápida (long-press) "Ocultar app" no Android:
+ * protecther://appearance?hide=1 abre Aparência já pedindo a confirmação.
+ * Mantenha em sincronia com plugins/withDiscreetIcons.js.
+ */
+const linking: LinkingOptions<AppStackParamList> = {
+  prefixes: ["protecther://"],
+  config: {
+    screens: {
+      Appearance: {
+        path: "appearance",
+        parse: { hide: (value: string) => value === "1" },
+      },
+    },
+  },
+};
 
 const DarkNavTheme = {
   ...DefaultTheme,
@@ -103,12 +125,17 @@ function AppNavigator() {
       <AppStack.Screen
         name="DeviceManagement"
         component={DeviceManagementScreen}
-        options={{ title: "Dispositivos BLE" }}
+        options={{ title: "Minhas joias" }}
       />
       <AppStack.Screen
-        name="ExperimentDashboard"
-        component={ExperimentDashboardScreen}
-        options={{ title: "Resultados A/B" }}
+        name="Appearance"
+        component={AppearanceScreen}
+        options={{ title: "Aparência" }}
+      />
+      <AppStack.Screen
+        name="QuickSos"
+        component={QuickSosScreen}
+        options={{ title: "SOS rápido" }}
       />
     </AppStack.Navigator>
   );
@@ -126,7 +153,11 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} theme={DarkNavTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={DarkNavTheme}
+      linking={linking}
+    >
       {state.status === "authenticated" ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

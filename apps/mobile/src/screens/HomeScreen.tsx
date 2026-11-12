@@ -19,11 +19,13 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { publishActiveAlert } from "../alerts/activeAlertBus";
 import { apiFetchJson } from "../api/client";
+import { readMicPermission } from "../audio/micPermission";
+import { onSosAudioCommand, sendSosAudioCommand } from "../audio/sosAudioStore";
 import { useAuth } from "../auth/AuthContext";
 import { useEspButtonBleState } from "../ble/EspButtonBleContext";
-import { resolveSosCircleScale, useSosExperiment } from "../experiments";
-import { formatApiError } from "../lib/apiError";
+import { formatApiError, formatValidationError } from "../lib/apiError";
 import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Shadow, Spacing } from "../theme";
@@ -37,13 +39,12 @@ export function HomeScreen({ navigation }: Props) {
   const [activeAlertId, setActiveAlertId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sosError, setSosError] = useState<string | null>(null);
+  const [micGranted, setMicGranted] = useState(true);
   const isSmallScreen = height < 700 || width < 360;
   const isVeryNarrow = width < 350;
   const contentMaxWidth = Math.min(520, Math.max(320, width - 20));
-  const { variantId, trackConversion } = useSosExperiment();
-  const circleScale = resolveSosCircleScale(variantId);
-  const outerSize = (isSmallScreen ? 178 : 198) * circleScale;
-  const innerSize = (isSmallScreen ? 148 : 168) * circleScale;
+  const outerSize = isSmallScreen ? 178 : 198;
+  const innerSize = isSmallScreen ? 148 : 168;
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -87,7 +88,19 @@ export function HomeScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       void refreshActive();
+      void readMicPermission().then((p) => setMicGranted(p.granted));
     }, [refreshActive]),
+  );
+
+  // A explicação do microfone envia "kick" ao fechar: atualiza o link.
+  useEffect(
+    () =>
+      onSosAudioCommand((command) => {
+        if (command.type === "kick") {
+          void readMicPermission().then((p) => setMicGranted(p.granted));
+        }
+      }),
+    [],
   );
 
   const startAlert = useCallback(async () => {
@@ -98,7 +111,7 @@ export function HomeScreen({ navigation }: Props) {
     setSosError(null);
     const parsed = StartAlertRequestSchema.safeParse({ mode: "visible" });
     if (!parsed.success) {
-      setSosError(parsed.error.message);
+      setSosError(formatValidationError(parsed.error));
       return;
     }
     setLoading(true);
@@ -117,15 +130,16 @@ export function HomeScreen({ navigation }: Props) {
         setSosError("Resposta inválida da API");
         return;
       }
-      trackConversion("sos_time_to_trigger");
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
+      // Liga o áudio do SOS já (com o app aberto o sistema permite o microfone).
+      publishActiveAlert(body.data.alert.id);
       // Inicia o streaming de GPS na hora, sem esperar o polling de ~25s.
       requestLocationSyncNow();
       navigation.navigate("ActiveAlert", { alertId: body.data.alert.id });
     } finally {
       setLoading(false);
     }
-  }, [activeAlertId, getAccessToken, navigation, trackConversion]);
+  }, [activeAlertId, getAccessToken, navigation]);
 
   if (state.status !== "authenticated") {
     return null;
@@ -166,9 +180,17 @@ export function HomeScreen({ navigation }: Props) {
       >
         <View style={styles.headerTop}>
           <Text style={styles.brand}>Protect Her</Text>
-          <Pressable onPress={() => void signOut()} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>Sair</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => navigation.navigate("Appearance")}
+              style={styles.logoutBtn}
+            >
+              <Text style={styles.logoutText}>Aparência</Text>
+            </Pressable>
+            <Pressable onPress={() => void signOut()} style={styles.logoutBtn}>
+              <Text style={styles.logoutText}>Sair</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.userBlock}>
@@ -237,6 +259,30 @@ export function HomeScreen({ navigation }: Props) {
 
           {sosError ? <Text style={styles.sosError}>{sosError}</Text> : null}
 
+          <Pressable
+            onPress={() => navigation.navigate("QuickSos")}
+            accessibilityRole="button"
+            hitSlop={8}
+          >
+            <Text style={styles.quickSosLink}>
+              Configurar SOS rápido (sem abrir o app) ›
+            </Text>
+          </Pressable>
+
+          {micGranted ? null : (
+            <Pressable
+              onPress={() =>
+                sendSosAudioCommand({ type: "open_mic_explanation" })
+              }
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <Text style={styles.quickSosLink}>
+                Ativar áudio no SOS (microfone) ›
+              </Text>
+            </Pressable>
+          )}
+
           <View style={styles.bleStatusCard}>
             <Text
               style={[
@@ -282,17 +328,7 @@ export function HomeScreen({ navigation }: Props) {
             ]}
             onPress={() => navigation.navigate("DeviceManagement")}
           >
-            <Text style={styles.actionLabel}>Dispositivos{"\n"}conectados</Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.actionCard,
-              isVeryNarrow ? styles.actionCardNarrow : undefined,
-            ]}
-            onPress={() => navigation.navigate("ExperimentDashboard")}
-          >
-            <Text style={styles.actionLabel}>Resultados{"\n"}A/B</Text>
+            <Text style={styles.actionLabel}>Minhas{"\n"}joias</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -316,6 +352,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   brand: {
     fontFamily: "Italianno_400Regular",
@@ -445,6 +486,13 @@ const styles = StyleSheet.create({
     color: "#B12E58",
     textAlign: "center",
     marginTop: -6,
+  },
+  quickSosLink: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 13,
+    color: "#B12E58",
+    textAlign: "center",
+    textDecorationLine: "underline",
   },
   quickActions: {
     flexDirection: "row",

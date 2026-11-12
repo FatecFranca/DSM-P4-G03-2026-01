@@ -7,6 +7,9 @@ import {
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { PrivacyScreenSync } from "./src/appearance/PrivacyScreenSync";
+import { MicrophoneExplanationModal } from "./src/audio/MicrophoneExplanationModal";
+import { SosAudioRecorderSync } from "./src/audio/SosAudioRecorderSync";
 import { AuthProvider } from "./src/auth/AuthContext";
 import { EspButtonBleProvider } from "./src/ble/EspButtonBleContext";
 import { PushTokenSync } from "./src/devices/PushTokenSync";
@@ -14,6 +17,7 @@ import { EmergencyContactsSync } from "./src/emergency/EmergencyContactsSync";
 import { LocationPermissionSync } from "./src/location/LocationPermissionSync";
 import { ActiveAlertLocationSync } from "./src/location/activeAlertLocationSync";
 import { RootNavigator } from "./src/navigation/RootNavigator";
+import { QuickSosSync } from "./src/quickSos/QuickSosSync";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -31,11 +35,15 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <EspButtonBleProvider>
+          <PrivacyScreenSync />
           <LocationPermissionSync />
           <ActiveAlertLocationSync />
+          <SosAudioRecorderSync />
           <EmergencyContactsSync />
           <PushTokenSync />
+          <QuickSosSync />
           <RootNavigator />
+          <MicrophoneExplanationModal />
           <StatusBar style="dark" />
         </EspButtonBleProvider>
       </AuthProvider>

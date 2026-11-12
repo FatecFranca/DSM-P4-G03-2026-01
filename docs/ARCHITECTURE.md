@@ -74,9 +74,18 @@ protecther/
 - **Persistência**: `device_push_tokens` (upsert por `user_id` + `token`), `push_delivery_events` para auditoria.
 - **Consistência**: monotonicidade de `capturedAt` por alerta (janela configurável); índices `alerts(owner_user_id, status)`, `alert_acknowledgments(alert_id)`; transação no ACK; rate limit de ingestão mantido.
 
+### Áudio do SOS
+
+- **Gravação** (`apps/mobile/src/audio/SosAudioRecorderSync.tsx`): quando `ActiveAlertLocationSync` publica um alerta ativo em `alerts/activeAlertBus.ts`, o app grava trechos de 15 s com `expo-audio` (AAC mono 32 kbps) e para ao encerrar o alerta (o último trecho, mesmo curto, também vai). Continua com a tela bloqueada: iOS com `UIBackgroundModes: audio`, Android com serviço em primeiro plano `microphone` (notificação discreta "Alerta ativo", sem botão de parar — patch em `patches/expo-audio@55.0.18.patch`).
+- **Limites dos sistemas**: nenhum dos dois deixa *ligar* o microfone com o app fechado/em segundo plano (iOS sempre; Android 14+ via restrição de FGS). SOS rápido com o app fechado envia alerta e GPS; o áudio começa quando o app abre (status "Abra o app para gravar"). No Android sem permissão de notificações grava só com o app aberto.
+- **Permissão**: `MicrophoneExplanationModal` explica o uso antes do pedido do sistema (após o login; de novo 7 dias após "Agora não"; também pela Home e pela tela do alerta).
+- **Fila offline** (`sosAudioQueue.ts`): arquivos em `Documents/sos-audio/`, metadados no AsyncStorage, envio em ordem com espera crescente (5 s → 2 min), idempotente por `clientChunkId`; máximo 480 trechos (~2 h).
+- **Contato** (`ContactAlertAudioPanel.tsx`): lista os trechos, "Ouvir ao vivo" toca do mais recente em diante; baixa para o cache só enquanto a tela está aberta e apaga ao sair.
+- **API**: tabela `alert_audio_chunks` (bytea); rotas em `routes/alertAudio.ts`; retenção em `jobs/audioRetention.ts`.
+
 ### Observabilidade
 
-- Logs estruturados `telemetry`: `first_location_ingest_ms`, `location_ingest_rejected`, `location_post_failed`, `push_sent`, `push_failed`, `push_skipped_no_tokens`, `escalation_triggered`, além dos eventos anteriores.
+- Logs estruturados `telemetry`: `first_location_ingest_ms`, `location_ingest_rejected`, `location_post_failed`, `push_sent`, `push_failed`, `push_skipped_no_tokens`, `escalation_triggered`, `audio_chunk_received`, `audio_chunk_rejected`, além dos eventos anteriores.
 
 ## Próximos passos sugeridos
 

@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { formatApiError } from "../lib/apiError";
+import { formatApiError, formatValidationError } from "../lib/apiError";
 import type { AuthStackParamList } from "../navigation/types";
 import { Radius, Spacing } from "../theme";
 
@@ -81,7 +81,7 @@ export function RegisterScreen({ navigation }: Props) {
     setError(null);
     const parsed = RegisterRequestSchema.safeParse({ name, email, password });
     if (!parsed.success) {
-      setError(parsed.error.message);
+      setError(formatValidationError(parsed.error));
       return;
     }
     setLoading(true);

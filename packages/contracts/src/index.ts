@@ -109,3 +109,33 @@ export {
   type StartAlertRequest,
   type StartAlertResponse,
 } from "./alerts.js";
+export {
+  ALERT_AUDIO_CHUNK_MAX_BYTES,
+  ALERT_AUDIO_CHUNK_MAX_DURATION_MS,
+  ALERT_AUDIO_CHUNK_TARGET_MS,
+  AlertAudioChunkSchema,
+  AlertAudioClientChunkIdSchema,
+  AlertAudioMimeTypeSchema,
+  GetAlertAudioChunkParamsSchema,
+  PinAlertAudioParamsSchema,
+  type PinAlertAudioResponse,
+  PinAlertAudioResponseSchema,
+  type RemoveAlertAudioResponse,
+  RemoveAlertAudioResponseSchema,
+  ListAlertAudioParamsSchema,
+  ListAlertAudioQuerySchema,
+  ListAlertAudioResponseSchema,
+  PostAlertAudioParamsSchema,
+  PostAlertAudioRequestSchema,
+  PostAlertAudioResponseSchema,
+  type AlertAudioChunk,
+  type AlertAudioMimeType,
+  type GetAlertAudioChunkParams,
+  type ListAlertAudioQuery,
+  type ListAlertAudioResponse,
+  type PostAlertAudioParams,
+  type PostAlertAudioRequest,
+  type PostAlertAudioResponse,
+} from "./alertAudio.js";
+
+export * from "./alertHistory.js";

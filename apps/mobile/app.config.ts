@@ -1,4 +1,12 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
+import discreetIcons from "./src/appearance/discreetIcons.json";
+import siriNicknames from "./src/quickSos/siriNicknames.json";
+
+// O app nasce com o ícone e o nome originais (disfarce padrão = "original"). Os demais
+// disfarces só valem se o usuário escolhê-los em Aparência.
+const defaultDiscreetIcon = discreetIcons.icons.find(
+  (icon) => icon.key === discreetIcons.defaultKey,
+);
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const apiUrl =
@@ -14,14 +22,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: "ProtectHer",
+    name: defaultDiscreetIcon?.label ?? "ProtectHer",
     slug: "protecther-mobile",
+    // Deep link da ação rápida "Ocultar app" (ver plugins/withDiscreetIcons.js).
+    scheme: "protecther",
     ios: {
       ...config.ios,
       bundleIdentifier:
         process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? "com.protecther.app",
       infoPlist: {
         ...config.ios?.infoPlist,
+        // Apelidos que a Siri aceita no lugar do nome do app ("SOS no Proteger").
+        INAlternativeAppNames: siriNicknames.map((name) => ({
+          INAlternativeAppName: name,
+        })),
         NSLocalNetworkUsageDescription:
           "O app precisa acessar a API de desenvolvimento na sua rede local.",
         NSAppTransportSecurity: {
@@ -61,6 +75,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
     },
     plugins: [
+      "./plugins/withDiscreetIcons",
+      "./plugins/withQuickSos",
+      "./plugins/withSceneLifecycle",
       [
         "expo-location",
         {
@@ -69,6 +86,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           locationAlwaysAndWhenInUsePermission:
             "Com 'Sempre', o app pode enviar sua posição mesmo em segundo plano durante o alerta.",
           isAndroidBackgroundLocationEnabled: true,
+        },
+      ],
+      [
+        "expo-audio",
+        {
+          microphonePermission:
+            "O microfone é usado só durante um alerta de SOS: o som ao seu redor é gravado e enviado aos seus contatos de segurança.",
+          // Grava com a tela bloqueada (iOS: modo de fundo "audio"; Android:
+          // serviço em primeiro plano do tipo "microphone").
+          enableBackgroundRecording: true,
+          enableBackgroundPlayback: false,
         },
       ],
       [

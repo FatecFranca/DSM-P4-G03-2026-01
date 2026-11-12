@@ -20,9 +20,12 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { publishActiveAlert } from "../alerts/activeAlertBus";
 import { apiFetchJson } from "../api/client";
+import { SosAudioStatusCard } from "../audio/SosAudioStatusCard";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
+import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import { ACTIVE_ALERT_ID_STORAGE_KEY } from "../location/locationTaskNames";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Shadow, Spacing } from "../theme";
@@ -106,6 +109,7 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
       setAlertData(null);
       return;
     }
+    publishActiveAlert(active.id);
     setAlertData({
       status: active.status,
       mode: active.mode,
@@ -146,6 +150,9 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
         return;
       }
       await AsyncStorage.removeItem(ACTIVE_ALERT_ID_STORAGE_KEY);
+      // Para o áudio do SOS na hora (envia o último trecho) e o GPS no próximo sync.
+      publishActiveAlert(null);
+      requestLocationSyncNow();
       navigation.replace("Home");
     } finally {
       setLoading(false);
@@ -261,11 +268,13 @@ export function ActiveAlertScreen({ navigation, route }: Props) {
           <Text style={styles.noAlert}>Alerta encerrado ou indisponível.</Text>
         )}
 
+        {alertData ? <SosAudioStatusCard alertId={alertId} /> : null}
+
         <View style={styles.sectionCard}>
           <Text style={styles.cancelTitle}>Estou segura</Text>
           <Text style={styles.cancelDesc}>
-            Encerrar o alerta interrompe o rastreamento e avisa que você está
-            segura.
+            Encerrar o alerta interrompe o rastreamento e a gravação de áudio e
+            avisa que você está segura.
           </Text>
           <Pressable
             onPress={handleCancelPress}

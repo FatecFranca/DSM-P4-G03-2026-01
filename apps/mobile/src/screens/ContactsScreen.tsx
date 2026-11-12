@@ -21,7 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { formatApiError } from "../lib/apiError";
+import { formatApiError, formatValidationError } from "../lib/apiError";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Spacing } from "../theme";
 
@@ -118,7 +118,7 @@ export function ContactsScreen(_props: Props) {
     setMessage(null);
     const parsed = CreateInviteRequestSchema.safeParse({ targetEmail });
     if (!parsed.success) {
-      setError(parsed.error.message);
+      setError(formatValidationError(parsed.error));
       return;
     }
     setLoading(true);

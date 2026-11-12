@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
+import { ContactAlertAudioPanel } from "../audio/ContactAlertAudioPanel";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
 import { AlertLocationMap } from "../location/AlertLocationMap";
@@ -20,7 +21,8 @@ import { Radius, Spacing } from "../theme";
 type Props = NativeStackScreenProps<AppStackParamList, "ContactAlertDetail">;
 
 export function ContactAlertDetailScreen({ route }: Props) {
-  const { alertId, ownerName, startedAt } = route.params;
+  const { alertId, ownerName, startedAt, endedAt, isOwner } = route.params;
+  const ended = Boolean(endedAt);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isSmallScreen = height < 700 || width < 360;
@@ -45,6 +47,9 @@ export function ContactAlertDetailScreen({ route }: Props) {
   useEffect(() => {
     if (ackAttempted.current) return;
     ackAttempted.current = true;
+    // Registro do histórico: a titular não confirma o próprio alerta e um
+    // alerta encerrado não aceita confirmação.
+    if (isOwner || ended) return;
 
     void (async () => {
       try {
@@ -66,7 +71,7 @@ export function ContactAlertDetailScreen({ route }: Props) {
         setAckError("Não foi possível confirmar o recebimento");
       }
     })();
-  }, [alertId, getAccessToken]);
+  }, [alertId, ended, getAccessToken, isOwner]);
 
   return (
     <View style={styles.flex}>
@@ -94,12 +99,16 @@ export function ContactAlertDetailScreen({ route }: Props) {
         <Text
           style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}
         >
-          Localização em tempo real
+          {ended ? "Registro do alerta" : "Localização em tempo real"}
         </Text>
-        <Text style={styles.pageSubtitle}>Titular: {ownerName}</Text>
+        <Text style={styles.pageSubtitle}>
+          {isOwner ? "Seu alerta" : `Titular: ${ownerName}`}
+        </Text>
         <View style={styles.alertMetaCard}>
           <Text style={styles.alertMetaText}>
-            Alerta desde {formatDateTime(startedAt)}
+            {endedAt
+              ? `De ${formatDateTime(startedAt)} até ${formatDateTime(endedAt)}`
+              : `Alerta desde ${formatDateTime(startedAt)}`}
           </Text>
         </View>
 
@@ -107,6 +116,12 @@ export function ContactAlertDetailScreen({ route }: Props) {
           alertId={alertId}
           startedAt={startedAt}
           onMapTouchChange={setMapTouching}
+        />
+
+        <ContactAlertAudioPanel
+          alertId={alertId}
+          isOwner={isOwner === true}
+          ended={ended}
         />
 
         {confirmedAt ? (

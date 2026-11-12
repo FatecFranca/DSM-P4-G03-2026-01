@@ -33,7 +33,11 @@ type Point = { id: string; lat: number; lng: number; capturedAt: string };
  * Faz polling incremental de `GET /alerts/:id/locations`, centraliza no primeiro
  * ponto recebido e move o marker nos pontos seguintes.
  */
-export function AlertLocationMap({ alertId, startedAt, onMapTouchChange }: Props) {
+export function AlertLocationMap({
+  alertId,
+  startedAt,
+  onMapTouchChange,
+}: Props) {
   const { getAccessToken } = useAuth();
   const [points, setPoints] = useState<Point[]>([]);
   const sinceRef = useRef<string | null>(null);
@@ -161,20 +165,11 @@ export function AlertLocationMap({ alertId, startedAt, onMapTouchChange }: Props
           originWhitelist={["*"]}
         />
         <Pressable
-          style={({ pressed }) => [
-            styles.centerBtn,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.centerBtn, pressed && styles.pressed]}
           onPress={() => webViewRef.current?.injectJavaScript("centerMap()")}
         >
           <Text style={styles.centerBtnText}>Centralizar</Text>
         </Pressable>
-        <View style={styles.mapOverlay}>
-          <Text style={styles.mapOverlayText}>
-            {points.length} ponto{points.length !== 1 ? "s" : ""} capturado
-            {points.length !== 1 ? "s" : ""}
-          </Text>
-        </View>
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -194,19 +189,6 @@ const styles = StyleSheet.create({
   },
   map: {
     height: Dimensions.get("window").height * 0.62,
-  },
-  mapOverlay: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: "#E8B8C0",
-  },
-  mapOverlayText: {
-    fontFamily: "Poppins_400Regular",
-    fontSize: 13,
-    color: "#55383E",
-    textAlign: "center",
   },
   centerBtn: {
     position: "absolute",

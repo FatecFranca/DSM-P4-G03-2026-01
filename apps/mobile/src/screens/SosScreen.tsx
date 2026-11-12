@@ -18,8 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { resolveSosButtonPresentation, useSosExperiment } from "../experiments";
-import { formatApiError } from "../lib/apiError";
+import { formatApiError, formatValidationError } from "../lib/apiError";
 import { requestLocationSyncNow } from "../location/locationSyncTrigger";
 import type { AppStackParamList } from "../navigation/types";
 import { Radius, Shadow, Spacing } from "../theme";
@@ -34,14 +33,12 @@ export function SosScreen({ navigation }: Props) {
   const { getAccessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { variantId, trackConversion } = useSosExperiment();
-  const buttonPresentation = resolveSosButtonPresentation(variantId);
 
   const startAlert = async (mode: "visible" | "discreet") => {
     setError(null);
     const parsed = StartAlertRequestSchema.safeParse({ mode });
     if (!parsed.success) {
-      setError(parsed.error.message);
+      setError(formatValidationError(parsed.error));
       return;
     }
     setLoading(true);
@@ -60,7 +57,6 @@ export function SosScreen({ navigation }: Props) {
         setError("Resposta inválida da API");
         return;
       }
-      trackConversion("sos_time_to_trigger");
       Vibration.vibrate([0, 300, 100, 300, 100, 300]);
       // Inicia o streaming de GPS na hora, sem esperar o polling de ~25s.
       requestLocationSyncNow();
@@ -122,21 +118,13 @@ export function SosScreen({ navigation }: Props) {
               disabled={loading}
               style={({ pressed }) => [
                 styles.modeButton,
-                { minHeight: buttonPresentation.minHeight },
                 (pressed || loading) && styles.buttonPressed,
               ]}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text
-                  style={[
-                    styles.modeButtonText,
-                    { fontSize: buttonPresentation.fontSize },
-                  ]}
-                >
-                  Ativar visível
-                </Text>
+                <Text style={styles.modeButtonText}>Ativar visível</Text>
               )}
             </Pressable>
           </View>
@@ -156,21 +144,13 @@ export function SosScreen({ navigation }: Props) {
               disabled={loading}
               style={({ pressed }) => [
                 styles.modeButton,
-                { minHeight: buttonPresentation.minHeight },
                 (pressed || loading) && styles.buttonPressed,
               ]}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text
-                  style={[
-                    styles.modeButtonText,
-                    { fontSize: buttonPresentation.fontSize },
-                  ]}
-                >
-                  Ativar discreto
-                </Text>
+                <Text style={styles.modeButtonText}>Ativar discreto</Text>
               )}
             </Pressable>
           </View>

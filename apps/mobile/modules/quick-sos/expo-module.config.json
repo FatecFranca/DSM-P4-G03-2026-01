@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["QuickSosModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.quicksos.QuickSosModule"]
+  }
+}

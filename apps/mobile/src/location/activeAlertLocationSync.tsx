@@ -7,6 +7,7 @@ import Constants from "expo-constants";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef } from "react";
 import { AppState, type AppStateStatus } from "react-native";
+import { publishActiveAlert } from "../alerts/activeAlertBus";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { readSession } from "../auth/sessionStorage";
@@ -286,6 +287,7 @@ export function ActiveAlertLocationSync() {
     syncInFlightRef.current = true;
     try {
       if (state.status !== "authenticated") {
+        publishActiveAlert(null);
         await persistActiveAlertId(null);
         await stopTracking();
         return;
@@ -316,6 +318,8 @@ export function ActiveAlertLocationSync() {
         return;
       }
       const active = parsed.data.alert;
+      // Avisa o gravador de áudio do SOS (e quem mais escutar) sobre o alerta.
+      publishActiveAlert(active?.id ?? null);
       if (!active) {
         await persistActiveAlertId(null);
         await stopTracking();
@@ -369,6 +373,7 @@ export function ActiveAlertLocationSync() {
 
   useEffect(() => {
     if (state.status !== "authenticated") {
+      publishActiveAlert(null);
       return;
     }
     const runSync = () => void syncRef.current();

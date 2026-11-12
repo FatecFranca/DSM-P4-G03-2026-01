@@ -1,12 +1,14 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  customType,
   doublePrecision,
   index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -54,6 +56,13 @@ export const pushDeliveryKindEnum = pgEnum("push_delivery_kind", [
 ]);
 
 export const pushPriorityEnum = pgEnum("push_priority", ["normal", "high"]);
+
+/** Postgres `bytea` ↔ Node `Buffer` (drizzle-orm 0.40 não tem tipo nativo). */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -153,6 +162,76 @@ export const alertLocations = pgTable(
       table.capturedAt,
     ),
   ],
+);
+
+/**
+ * Trechos de áudio gravados pelo celular durante o alerta (SOS).
+ * Finalidade: permitir que os contatos ouçam o que está acontecendo e guardar
+ * como prova. Retenção: ALERT_AUDIO_RETENTION_DAYS (ver jobs/audioRetention.ts).
+ */
+export const alertAudioChunks = pgTable(
+  "alert_audio_chunks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    alertId: uuid("alert_id")
+      .notNull()
+      .references(() => alerts.id),
+    /** Id gerado no celular; torna o reenvio da fila idempotente. */
+    clientChunkId: text("client_chunk_id").notNull(),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
+    durationMs: integer("duration_ms").notNull(),
+    mimeType: text("mime_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    data: bytea("data").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("alert_audio_chunks_alert_client_uidx").on(
+      table.alertId,
+      table.clientChunkId,
+    ),
+    index("alert_audio_chunks_alert_captured_idx").on(
+      table.alertId,
+      table.capturedAt,
+    ),
+    index("alert_audio_chunks_created_idx").on(table.createdAt),
+  ],
+);
+
+/** Trechos "fixados" (favoritos) por cada usuário que pode ouvir o alerta. */
+export const alertAudioPins = pgTable(
+  "alert_audio_pins",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chunkId: uuid("chunk_id")
+      .notNull()
+      .references(() => alertAudioChunks.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.chunkId] })],
+);
+
+/** Trechos que um contato tirou da própria lista (para os outros continuam). */
+export const alertAudioHidden = pgTable(
+  "alert_audio_hidden",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chunkId: uuid("chunk_id")
+      .notNull()
+      .references(() => alertAudioChunks.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.chunkId] })],
 );
 
 export const alertAcknowledgments = pgTable(

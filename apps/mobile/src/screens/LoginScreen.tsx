@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { formatApiError } from "../lib/apiError";
+import { formatApiError, formatValidationError } from "../lib/apiError";
 import type { AuthStackParamList } from "../navigation/types";
 import { Radius, Spacing } from "../theme";
 
@@ -74,9 +74,12 @@ export function LoginScreen({ navigation }: Props) {
 
   const onSubmit = async () => {
     setError(null);
-    const parsed = LoginRequestSchema.safeParse({ email, password });
+    const parsed = LoginRequestSchema.safeParse({
+      email: email.trim(),
+      password,
+    });
     if (!parsed.success) {
-      setError(parsed.error.message);
+      setError(formatValidationError(parsed.error));
       return;
     }
     setLoading(true);
@@ -136,6 +139,9 @@ export function LoginScreen({ navigation }: Props) {
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
               keyboardType="email-address"
               cursorColor="#DA8295"
               selectionColor="#DA8295"
@@ -151,6 +157,10 @@ export function LoginScreen({ navigation }: Props) {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              autoComplete="current-password"
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={() => void onSubmit()}
               cursorColor="#DA8295"
               selectionColor="#DA8295"
             />
@@ -239,7 +249,7 @@ const styles = StyleSheet.create({
     minHeight: 46,
     fontFamily: "Poppins_400Regular",
     fontSize: 14,
-    color: "#8B7378",
+    color: "#3B2328",
     borderWidth: 0,
   },
   primaryButton: {

@@ -6,7 +6,10 @@ import fastifyJwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { startAlertEscalationScheduler } from "./jobs/alertEscalationTick.js";
+import { startAlertAudioRetentionScheduler } from "./jobs/audioRetention.js";
 import { registerAdminRoutes } from "./routes/admin.js";
+import { registerAlertAudioRoutes } from "./routes/alertAudio.js";
+import { registerAlertHistoryRoutes } from "./routes/alertHistory.js";
 import { registerAlertRoutes } from "./routes/alerts.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
@@ -126,14 +129,20 @@ export async function buildServer() {
 
     await registerDeviceRoutes(scoped);
     await registerAlertRoutes(scoped, { contactsPush });
+    await registerAlertAudioRoutes(scoped);
+    await registerAlertHistoryRoutes(scoped);
   });
 
   const stopEscalationScheduler = startAlertEscalationScheduler(
     app.log,
     contactsPush,
   );
+  const stopAudioRetentionScheduler = startAlertAudioRetentionScheduler(
+    app.log,
+  );
   app.addHook("onClose", async () => {
     stopEscalationScheduler();
+    stopAudioRetentionScheduler();
   });
 
   // Serve static web files (dashboard, landing page, etc.)

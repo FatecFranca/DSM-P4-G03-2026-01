@@ -13,7 +13,8 @@ export async function ensureAndroidAlertsChannel(
     return;
   }
   await Notifications.setNotificationChannelAsync("alerts", {
-    name: "Alertas ProtectHer",
+    // Nome visível em Configurações > Apps > Notificações: precisa ser neutro.
+    name: "Avisos",
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 300, 100, 300],
     enableVibrate: true,
