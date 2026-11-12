@@ -1,5 +1,5 @@
 import AppIntents
-import QuickSos
+internal import QuickSos
 
 // Copiado para o target do app por plugins/withQuickSos.js (o processador de metadados
 // de App Intents só enxerga intents compilados no próprio app, não em pods estáticos).
