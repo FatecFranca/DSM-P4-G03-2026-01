@@ -60,7 +60,14 @@ function mergeChunks(
  * enviou e toca em sequência no modo "Ouvir ao vivo". Os arquivos são baixados
  * para o cache só enquanto a tela está aberta e apagados ao sair.
  */
-export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
+export function ContactAlertAudioPanel({
+  alertId,
+  isOwner = false,
+}: {
+  alertId: string;
+  /** Titular: excluir apaga para todos; contato: só tira da própria lista. */
+  isOwner?: boolean;
+}) {
   const { getAccessToken } = useAuth();
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
@@ -283,9 +290,13 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
       { method: "DELETE", accessToken: getAccessTokenRef.current() },
     );
     setPinBusyId(null);
-    // 404: já tinha sido excluído (por outra pessoa ou pelo prazo).
+    // 404: já tinha sido excluído (pela titular ou pelo prazo).
     if (!res.ok && res.status !== 404) {
-      setError("Não foi possível excluir este trecho. Tente de novo.");
+      setError(
+        isOwner
+          ? "Não foi possível excluir este trecho. Tente de novo."
+          : "Não foi possível remover este trecho. Tente de novo.",
+      );
       return;
     }
     if (playingId === chunk.id) {
@@ -305,13 +316,16 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
   };
 
   const confirmDelete = (chunk: AlertAudioChunk) => {
+    const label = formatChunkLabel(chunk.capturedAt, chunk.durationMs);
     Alert.alert(
-      "Excluir este trecho?",
-      `O áudio de ${formatChunkLabel(chunk.capturedAt, chunk.durationMs)} será apagado de vez, para todos que acompanham o alerta.`,
+      isOwner ? "Excluir este trecho?" : "Remover da sua lista?",
+      isOwner
+        ? `O áudio de ${label} será apagado de vez, para você e para seus contatos.`
+        : `O trecho de ${label} sai só da sua lista. A titular continua com ele.`,
       [
         { text: "Cancelar", style: "cancel" },
         {
-          text: "Excluir",
+          text: isOwner ? "Excluir" : "Remover",
           style: "destructive",
           onPress: () => void deleteChunk(chunk),
         },
@@ -504,7 +518,7 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
                     disabled={pinBusyId === chunk.id}
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel={`Excluir trecho de ${label}`}
+                    accessibilityLabel={`${isOwner ? "Excluir" : "Remover da sua lista o"} trecho de ${label}`}
                     style={({ pressed }) => [
                       styles.pinButton,
                       pressed && styles.pressed,

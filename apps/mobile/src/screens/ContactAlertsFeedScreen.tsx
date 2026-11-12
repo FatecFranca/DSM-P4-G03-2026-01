@@ -1,4 +1,7 @@
-import { ContactsAlertFeedResponseSchema } from "@protecther/contracts";
+import {
+  type AlertHistoryItem,
+  ContactsAlertFeedResponseSchema,
+} from "@protecther/contracts";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,6 +17,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AlertHistoryList } from "../alerts/AlertHistoryList";
 import { apiFetchJson } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatApiError } from "../lib/apiError";
@@ -64,6 +68,7 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
   const [items, setItems] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"active" | "history">("active");
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -110,6 +115,88 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
     });
   };
 
+  const openHistoryItem = useCallback(
+    (item: AlertHistoryItem) => {
+      // O próprio alerta ainda ativo: volta para a tela de controle do SOS.
+      if (item.isOwner && item.alert.status === "active") {
+        navigation.navigate("ActiveAlert", { alertId: item.alert.id });
+        return;
+      }
+      navigation.navigate("ContactAlertDetail", {
+        alertId: item.alert.id,
+        ownerName: item.isOwner ? "Você" : item.owner.name,
+        startedAt: item.alert.startedAt,
+        endedAt: item.alert.endedAt,
+        isOwner: item.isOwner,
+      });
+    },
+    [navigation],
+  );
+
+  const contentLayout = {
+    paddingTop: Math.max(12, insets.top + 6),
+    paddingBottom: Math.max(Spacing.xxxl, insets.bottom + 16),
+    width: "100%" as const,
+    maxWidth: contentMaxWidth,
+    alignSelf: "center" as const,
+  };
+
+  const header = (
+    <>
+      <Text style={styles.brand}>Protect Her</Text>
+      <Text style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}>
+        Alertas
+      </Text>
+      <View style={styles.segment} accessibilityRole="tablist">
+        {(
+          [
+            ["active", "Ativos"],
+            ["history", "Histórico"],
+          ] as const
+        ).map(([key, label]) => {
+          const selected = tab === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setTab(key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              style={[styles.segmentItem, selected && styles.segmentItemOn]}
+            >
+              <Text
+                style={[styles.segmentText, selected && styles.segmentTextOn]}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={styles.subtitle}>
+        {tab === "active"
+          ? "Titulares sob sua proteção com alertas ativos"
+          : "Seus alertas e os de quem você protege, com áudio e trajeto"}
+      </Text>
+    </>
+  );
+
+  if (tab === "history") {
+    return (
+      <View style={styles.flex}>
+        <LinearGradient
+          colors={["rgba(255,255,255,0.2)", "rgba(199,22,87,0.2)"]}
+          style={styles.backgroundGradient}
+          pointerEvents="none"
+        />
+        <AlertHistoryList
+          header={<View style={styles.historyHeader}>{header}</View>}
+          onOpen={openHistoryItem}
+          contentStyle={[styles.historyContent, contentLayout]}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.flex}>
       <LinearGradient
@@ -120,27 +207,9 @@ export function ContactAlertsFeedScreen({ navigation }: Props) {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[
-          styles.container,
-          {
-            paddingTop: Math.max(12, insets.top + 6),
-            paddingBottom: Math.max(Spacing.xxxl, insets.bottom + 16),
-            width: "100%",
-            maxWidth: contentMaxWidth,
-            alignSelf: "center",
-          },
-        ]}
+        contentContainerStyle={[styles.container, contentLayout]}
       >
-        <Text style={styles.brand}>Protect Her</Text>
-
-        <Text
-          style={[styles.pageTitle, isSmallScreen && styles.pageTitleSmall]}
-        >
-          Alertas
-        </Text>
-        <Text style={styles.subtitle}>
-          Titulares sob sua proteção com alertas ativos
-        </Text>
+        {header}
 
         <Pressable
           onPress={() => void refresh()}
@@ -262,6 +331,47 @@ const styles = StyleSheet.create({
     textAlign: "center",
     alignSelf: "center",
     width: "100%",
+  },
+  segment: {
+    flexDirection: "row",
+    alignSelf: "center",
+    width: "100%",
+    maxWidth: 360,
+    padding: 4,
+    borderRadius: Radius.full,
+    backgroundColor: "rgba(255,255,255,0.75)",
+    borderWidth: 1,
+    borderColor: "#E8B8C0",
+  },
+  segmentItem: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: Radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentItemOn: {
+    backgroundColor: "#C72A67",
+    shadowColor: "#C71657",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  segmentText: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 14,
+    color: "#55383E",
+  },
+  segmentTextOn: {
+    fontFamily: "Poppins_600SemiBold",
+    color: "#FFFFFF",
+  },
+  historyHeader: {
+    gap: 14,
+  },
+  historyContent: {
+    paddingHorizontal: Spacing.lg,
   },
   updateButton: {
     minHeight: 44,
