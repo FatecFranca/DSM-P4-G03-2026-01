@@ -365,6 +365,55 @@ export async function registerAlertAudioRoutes(
     );
   };
 
+  /**
+   * Excluir um trecho de vez (para todos), a qualquer momento: a dona do
+   * alerta e os contatos que podem ouvi-lo.
+   */
+  app.delete("/alerts/:id/audio/:chunkId", async (request, reply) => {
+    const userId = getUserId(request);
+    if (!userId) {
+      return reply
+        .status(401)
+        .send(apiError("UNAUTHORIZED", "Missing authentication"));
+    }
+    const params = GetAlertAudioChunkParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply
+        .status(400)
+        .send(apiError("VALIDATION_ERROR", params.error.message));
+    }
+    const alert = await getAlertById(params.data.id);
+    if (!alert) {
+      return reply
+        .status(404)
+        .send(apiError("ALERT_NOT_FOUND", "Alert not found"));
+    }
+    if (!(await canReadAlertLocations(userId, alert))) {
+      return reply
+        .status(403)
+        .send(apiError("FORBIDDEN", "Not allowed to read this alert"));
+    }
+    const deleted = await db
+      .delete(alertAudioChunks)
+      .where(
+        and(
+          eq(alertAudioChunks.id, params.data.chunkId),
+          eq(alertAudioChunks.alertId, alert.id),
+        ),
+      )
+      .returning({ id: alertAudioChunks.id });
+    if (deleted.length === 0) {
+      return reply
+        .status(404)
+        .send(apiError("AUDIO_NOT_FOUND", "Audio chunk not found"));
+    }
+    request.log.info(
+      { alertId: alert.id, chunkId: params.data.chunkId, userId },
+      "alert_audio_deleted",
+    );
+    return reply.status(204).send();
+  });
+
   app.put("/alerts/:id/audio/:chunkId/pin", (request, reply) =>
     setPin(request, reply, true),
   );

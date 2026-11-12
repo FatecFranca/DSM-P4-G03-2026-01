@@ -12,6 +12,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -275,6 +276,49 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
     }
   };
 
+  const deleteChunk = async (chunk: AlertAudioChunk) => {
+    setPinBusyId(chunk.id);
+    const res = await apiFetchJson<unknown>(
+      `/alerts/${encodeURIComponent(alertId)}/audio/${encodeURIComponent(chunk.id)}`,
+      { method: "DELETE", accessToken: getAccessTokenRef.current() },
+    );
+    setPinBusyId(null);
+    // 404: já tinha sido excluído (por outra pessoa ou pelo prazo).
+    if (!res.ok && res.status !== 404) {
+      setError("Não foi possível excluir este trecho. Tente de novo.");
+      return;
+    }
+    if (playingId === chunk.id) {
+      player.pause();
+      setPlayingId(null);
+    }
+    downloadsRef.current.delete(chunk.id);
+    try {
+      const file = new File(cacheDir, `${chunk.id}.m4a`);
+      if (file.exists) {
+        file.delete();
+      }
+    } catch {
+      // Cache já limpo.
+    }
+    setChunks((current) => current.filter((c) => c.id !== chunk.id));
+  };
+
+  const confirmDelete = (chunk: AlertAudioChunk) => {
+    Alert.alert(
+      "Excluir este trecho?",
+      `O áudio de ${formatChunkLabel(chunk.capturedAt, chunk.durationMs)} será apagado de vez, para todos que acompanham o alerta.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: () => void deleteChunk(chunk),
+        },
+      ],
+    );
+  };
+
   const toggleLive = () => {
     if (live) {
       setLive(false);
@@ -401,7 +445,7 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
           {tab.kind === "pinned" && pinnedChunks.length === 0 ? (
             <Text style={styles.detail}>
               Nenhum trecho fixado. Toque na estrela ao lado de um trecho para
-              guardá-lo aqui.
+              guardá-lo aqui por até 1 ano (os outros são apagados em 30 dias).
             </Text>
           ) : null}
           <View style={styles.list}>
@@ -454,6 +498,19 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
                     >
                       {chunk.pinned ? "★" : "☆"}
                     </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => confirmDelete(chunk)}
+                    disabled={pinBusyId === chunk.id}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Excluir trecho de ${label}`}
+                    style={({ pressed }) => [
+                      styles.pinButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.deleteIcon}>🗑</Text>
                   </Pressable>
                 </View>
               );
@@ -578,6 +635,9 @@ const styles = StyleSheet.create({
   pinIcon: {
     fontSize: 20,
     color: "#9B7B82",
+  },
+  deleteIcon: {
+    fontSize: 17,
   },
   pinIconOn: {
     color: "#C71657",

@@ -286,3 +286,15 @@ Mesmo acesso da lista. Devolve os bytes (`audio/mp4`, `Cache-Control: private, n
 ### Retenção
 
 Os trechos são apagados automaticamente depois de `ALERT_AUDIO_RETENTION_DAYS` (padrão **30 dias**, job de hora em hora).
+
+### Fixar e excluir trechos
+
+| Método | Rota | Quem | O que faz |
+|---|---|---|---|
+| `PUT` | `/alerts/:id/audio/:chunkId/pin` | dona e contatos do alerta | Fixa (★) o trecho para quem pediu. `{ chunkId, pinned: true }` |
+| `DELETE` | `/alerts/:id/audio/:chunkId/pin` | dona e contatos do alerta | Desafixa. `{ chunkId, pinned: false }` |
+| `DELETE` | `/alerts/:id/audio/:chunkId` | dona e contatos do alerta | Exclui o trecho de vez, para todos. `204`; `404` se já não existe |
+
+A listagem traz `pinned` por trecho (sempre do ponto de vista de quem consulta). Trechos fixados por alguém
+ficam fora da limpeza de 30 dias e só são apagados depois de `ALERT_AUDIO_PINNED_RETENTION_DAYS`
+(padrão **365 dias**) ou quando alguém os exclui.
