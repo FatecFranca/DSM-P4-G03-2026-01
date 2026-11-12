@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsc",
+    "build": "pnpm --filter @protecther/contracts build && tsc",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
