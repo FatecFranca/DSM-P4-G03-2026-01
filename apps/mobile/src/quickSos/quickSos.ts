@@ -180,13 +180,12 @@ export function describeTriggerResult(result: QuickSosTriggerResult): {
 /** Frases da Siri — precisam bater com modules/quick-sos/app-intents/QuickSosIntents.swift. */
 export function siriPhrases(appName: string): string[] {
   return [
-    `Pedir ajuda no ${appName}`,
-    `SOS no ${appName}`,
     `Ativar SOS no ${appName}`,
+    `SOS no ${appName}`,
+    `Ativar proteção no ${appName}`,
+    `Iniciar proteção no ${appName}`,
+    `Pedir ajuda no ${appName}`,
     `Emergência no ${appName}`,
-    `Preciso de ajuda no ${appName}`,
-    `Me ajuda no ${appName}`,
-    `Socorro no ${appName}`,
   ];
 }
 
@@ -195,6 +194,14 @@ export function siriPhrases(appName: string): string[] {
  * usuária pode dizer "SOS no Proteger" em vez do nome em inglês.
  */
 export const SIRI_APP_NICKNAMES: readonly string[] = siriNicknames;
+
+/**
+ * Ensaio da Siri: deu certo quando o disparo veio da Siri / Atalhos e parou no modo teste
+ * (ou seja, a Siri achou o atalho e o app respondeu, sem enviar alerta).
+ */
+export function isSiriRehearsalSuccess(result: QuickSosTriggerResult): boolean {
+  return result.source === "app_intent" && result.status === "test";
+}
 
 export function countdownLabel(seconds: CountdownSeconds): string {
   return seconds === 0 ? "Na hora" : `${seconds} s`;

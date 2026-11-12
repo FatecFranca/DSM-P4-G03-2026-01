@@ -5,14 +5,23 @@ pela Siri, pelo app Atalhos, pelo Toque traseiro e pelo Botão de Ação (iOS 17
 nativo (`modules/quick-sos/ios/QuickSosRunner.swift`): cria o alerta na API, confirma com
 vibração e manda um ponto de GPS.
 
-## Frases da Siri (sem configurar nada)
+## Frases da Siri
 
 - Frases prontas: `modules/quick-sos/app-intents/QuickSosIntents.swift`, espelhadas em
-  `siriPhrases()` (`src/quickSos/quickSos.ts`). Ex.: "Me ajuda no ProtectHer", "SOS no ProtectHer".
-- A Apple exige o nome do app na frase. Para quem fala português, o app aceita apelidos
-  (`src/quickSos/siriNicknames.json` → `INAlternativeAppNames` no Info.plist): "Me ajuda no
-  Proteger", "SOS no Proteger".
+  `siriPhrases()` (`src/quickSos/quickSos.ts`). Ex.: "Ativar SOS no ProtectHer".
+- A Apple exige o nome do app na frase. O app também registra apelidos
+  (`src/quickSos/siriNicknames.json` → `INAlternativeAppNames` no Info.plist).
 - "SOS" sozinho não funciona: a Siri responde com a definição da sigla.
+- Frases com "me ajuda", "preciso de ajuda" ou "socorro" não funcionam: a Siri trata como pedido
+  de socorro dela mesma (oferece ligar para a emergência) e não repassa ao app.
+
+### Primeira vez: ensaio guiado
+
+Na primeira vez que alguém fala uma frase do app, o iOS pergunta se pode ativar os atalhos
+("Ativar"). Não existe API para o app fazer isso sozinho. A tela SOS rápido tem o cartão
+"Ativar a Siri para este app" (`src/quickSos/SiriRehearsalCard.tsx`): liga o modo teste, mostra a
+frase, espera o disparo da Siri chegar e devolve o modo teste ao que era. Assim a pergunta do
+sistema acontece num ensaio, sem enviar alerta, e não numa emergência.
 
 ## Frase curta, Toque traseiro e Botão de Ação
 

@@ -39,14 +39,15 @@ struct QuickSosAppShortcuts: AppShortcutsProvider {
   static var appShortcuts: [AppShortcut] {
     AppShortcut(
       intent: TriggerQuickSosIntent(),
+      // Sem "me ajuda" / "preciso de ajuda" / "socorro": a Siri trata como pedido de socorro
+      // dela mesma (oferece ligar para a emergência) e não repassa ao app.
       phrases: [
-        "Pedir ajuda no \(.applicationName)",
-        "SOS no \(.applicationName)",
         "Ativar SOS no \(.applicationName)",
+        "SOS no \(.applicationName)",
+        "Ativar proteção no \(.applicationName)",
+        "Iniciar proteção no \(.applicationName)",
+        "Pedir ajuda no \(.applicationName)",
         "Emergência no \(.applicationName)",
-        "Preciso de ajuda no \(.applicationName)",
-        "Me ajuda no \(.applicationName)",
-        "Socorro no \(.applicationName)",
       ],
       shortTitle: "Pedir ajuda",
       systemImageName: "exclamationmark.shield.fill"

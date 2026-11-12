@@ -3,6 +3,7 @@ import {
   DEFAULT_COUNTDOWN,
   PENDING_MAX_AGE_MS,
   describeTriggerResult,
+  isSiriRehearsalSuccess,
   isStale,
   normalizeCapabilities,
   normalizeCountdown,
@@ -138,6 +139,36 @@ describe("textos", () => {
   });
 
   it("frases da Siri usam o nome do app", () => {
-    expect(siriPhrases("ProtectHer")[0]).toBe("Pedir ajuda no ProtectHer");
+    expect(siriPhrases("ProtectHer")[0]).toBe("Ativar SOS no ProtectHer");
+  });
+
+  it("não oferece frases que a Siri trata como pedido de socorro dela", () => {
+    const phrases = siriPhrases("ProtectHer").join(" | ").toLowerCase();
+    expect(phrases).not.toContain("me ajuda");
+    expect(phrases).not.toContain("preciso de ajuda");
+    expect(phrases).not.toContain("socorro");
+  });
+});
+
+describe("isSiriRehearsalSuccess", () => {
+  const base = { alertId: null, at: 1, message: null } as const;
+
+  it("só conta disparo da Siri em modo teste", () => {
+    expect(
+      isSiriRehearsalSuccess({ ...base, source: "app_intent", status: "test" }),
+    ).toBe(true);
+    expect(
+      isSiriRehearsalSuccess({ ...base, source: "app", status: "test" }),
+    ).toBe(false);
+    expect(
+      isSiriRehearsalSuccess({ ...base, source: "app_intent", status: "sent" }),
+    ).toBe(false);
+    expect(
+      isSiriRehearsalSuccess({
+        ...base,
+        source: "app_intent",
+        status: "no_session",
+      }),
+    ).toBe(false);
   });
 });

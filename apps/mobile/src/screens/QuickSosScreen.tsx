@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppStackParamList } from "../navigation/types";
+import { SiriRehearsalCard } from "../quickSos/SiriRehearsalCard";
 import {
   COUNTDOWN_OPTIONS,
   type CountdownSeconds,
@@ -283,11 +284,17 @@ export function QuickSosScreen(_props: Props) {
                 novo.
               </Text>
             )}
+            {capabilities.appIntents ? (
+              <SiriRehearsalCard
+                phrase={siriPhrases(APP_NAME)[0] ?? `Ativar SOS no ${APP_NAME}`}
+                onSettingsChanged={refresh}
+              />
+            ) : null}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Falar com a Siri</Text>
               <Text style={styles.cardDesc}>
-                Não precisa configurar nada. Diga “E aí, Siri” e uma das frases
-                — funciona com o iPhone bloqueado e a Siri só responde “Pronto.”
+                Diga “E aí, Siri” e uma das frases — funciona com o iPhone
+                bloqueado e a Siri só responde “Pronto.”
               </Text>
               {siriPhrases(APP_NAME)
                 .slice(0, 4)
