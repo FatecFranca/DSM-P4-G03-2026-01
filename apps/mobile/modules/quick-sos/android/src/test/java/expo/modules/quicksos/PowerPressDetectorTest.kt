@@ -28,9 +28,19 @@ class PowerPressDetectorTest {
   fun slowPressesDoNotTrigger() {
     val d = PowerPressDetector()
     assertFalse(d.onPress(0))
-    assertFalse(d.onPress(2_500))
-    assertFalse(d.onPress(5_000))
-    assertFalse(d.onPress(7_500))
+    assertFalse(d.onPress(3_500))
+    assertFalse(d.onPress(7_000))
+    assertFalse(d.onPress(10_500))
+  }
+
+  @Test
+  fun onePressPerSecondWithLateScreenOffTriggers() {
+    // Medido no emulador com toques a ~1 s: OFF 0 ms, ON +655 ms, OFF +2762 ms
+    // (o SCREEN_OFF saiu ~2 s depois do toque).
+    val d = PowerPressDetector()
+    assertFalse(d.onPress(0))
+    assertFalse(d.onPress(655))
+    assertTrue(d.onPress(2_762))
   }
 
   @Test
@@ -47,9 +57,9 @@ class PowerPressDetectorTest {
     val d = PowerPressDetector()
     d.onPress(0)
     d.onPress(500)
-    assertFalse(d.onPress(3_000)) // gap 2500 > 2000: recomeça
-    assertFalse(d.onPress(3_400))
-    assertTrue(d.onPress(3_800))
+    assertFalse(d.onPress(4_000)) // gap 3500 > 3000: recomeça
+    assertFalse(d.onPress(4_400))
+    assertTrue(d.onPress(4_800))
   }
 
   @Test

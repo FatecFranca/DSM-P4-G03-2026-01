@@ -17,4 +17,6 @@ Pod::Spec.new do |s|
   }
 
   s.source_files = "**/*.{h,m,mm,swift,hpp,cpp}"
+  # Som mudo da notificação de confirmação: faz o iPhone vibrar sem tocar nada.
+  s.resources = "quick_sos_silence.wav"
 end

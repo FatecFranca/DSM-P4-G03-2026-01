@@ -1,5 +1,6 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 import discreetIcons from "./src/appearance/discreetIcons.json";
+import siriNicknames from "./src/quickSos/siriNicknames.json";
 
 // O app nasce com o ícone e o nome originais (disfarce padrão = "original"). Os demais
 // disfarces só valem se o usuário escolhê-los em Aparência.
@@ -31,6 +32,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         process.env.EXPO_IOS_BUNDLE_IDENTIFIER ?? "com.protecther.app",
       infoPlist: {
         ...config.ios?.infoPlist,
+        // Apelidos que a Siri aceita no lugar do nome do app ("SOS no Proteger").
+        INAlternativeAppNames: siriNicknames.map((name) => ({
+          INAlternativeAppName: name,
+        })),
         NSLocalNetworkUsageDescription:
           "O app precisa acessar a API de desenvolvimento na sua rede local.",
         NSAppTransportSecurity: {

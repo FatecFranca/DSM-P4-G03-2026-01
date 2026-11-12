@@ -19,6 +19,7 @@ import {
   COUNTDOWN_OPTIONS,
   type CountdownSeconds,
   type QuickSosSettings,
+  SIRI_APP_NICKNAMES,
   countdownLabel,
   normalizeSettings,
   siriPhrases,
@@ -153,7 +154,7 @@ export function QuickSosScreen(_props: Props) {
                     Botão liga/desliga 3 vezes
                   </Text>
                   <Text style={styles.cardDesc}>
-                    Aperte o botão de ligar 3 vezes seguidas (em até ~5 s), com
+                    Aperte o botão de ligar 3 vezes seguidas (em até ~7 s), com
                     a tela ligada ou desligada. Uma vibração curta confirma que
                     o gesto foi reconhecido; uma vibração longa, que o alerta
                     foi enviado.
@@ -177,6 +178,12 @@ export function QuickSosScreen(_props: Props) {
               <Text style={styles.cardHint}>
                 Evite 5 toques: em muitos Android isso aciona a emergência do
                 próprio sistema (ligação). Durante ligações o gesto é ignorado.
+              </Text>
+              <Text style={styles.cardHint}>
+                Aperte em ritmo calmo (cerca de 1 toque por segundo). Dois
+                toques muito rápidos abrem a câmera em vários aparelhos e o
+                gesto não é contado — se preferir, desligue “Abrir câmera
+                rapidamente” nos gestos do sistema.
               </Text>
             </View>
 
@@ -277,22 +284,54 @@ export function QuickSosScreen(_props: Props) {
               </Text>
             )}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Siri</Text>
+              <Text style={styles.cardTitle}>Falar com a Siri</Text>
               <Text style={styles.cardDesc}>
-                Diga “E aí, Siri” (ou “Siri”) e uma das frases. Funciona com o
-                iPhone bloqueado e a Siri só responde “Pronto.”
+                Não precisa configurar nada. Diga “E aí, Siri” e uma das frases
+                — funciona com o iPhone bloqueado e a Siri só responde “Pronto.”
               </Text>
-              {siriPhrases(APP_NAME).map((phrase) => (
-                <Text key={phrase} style={styles.phrase}>
-                  “{phrase}”
+              {siriPhrases(APP_NAME)
+                .slice(0, 4)
+                .map((phrase) => (
+                  <Text key={phrase} style={styles.phrase}>
+                    “{phrase}”
+                  </Text>
+                ))}
+              {SIRI_APP_NICKNAMES.length > 0 ? (
+                <Text style={styles.cardHint}>
+                  Se a Siri não entender o nome do app, troque por{" "}
+                  {SIRI_APP_NICKNAMES.map((name) => `“${name}”`).join(" ou ")} —
+                  por exemplo, “SOS no {SIRI_APP_NICKNAMES.at(-1)}”.
                 </Text>
-              ))}
+              ) : null}
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>
+                Frase curta, sem o nome do app
+              </Text>
+              <Text style={styles.cardDesc}>
+                {
+                  "1. Abra o app Atalhos › “+” › Adicionar Ação › procure “Pedir ajuda” (deste app).\n2. Dê um nome de duas ou mais palavras, como “Ativar SOS” ou uma frase-código só sua, e salve.\n3. Diga “E aí, Siri” e o nome do atalho."
+                }
+              </Text>
+              <Text style={styles.cardHint}>
+                Não use só “SOS” como nome: a Siri responde com uma explicação
+                sobre a sigla em vez de rodar o atalho.
+              </Text>
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Confirmação por vibração</Text>
+              <Text style={styles.cardDesc}>
+                Quando o alerta é enviado, o iPhone vibra. Com o app fechado a
+                vibração vem de um aviso silencioso (“Atalho executado”), então
+                mantenha as notificações deste app permitidas. Se o envio
+                falhar, não há vibração.
+              </Text>
             </View>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Toque traseiro (3 toques)</Text>
               <Text style={styles.cardDesc}>
                 {
-                  "1. Abra o app Atalhos › “+” › Adicionar Ação › procure “Pedir ajuda” (deste app) e salve.\n2. Ajustes › Acessibilidade › Toque › Tocar Atrás › Toque Triplo.\n3. Em “Atalhos”, escolha o atalho que você criou.\nDepois é só dar 3 toques nas costas do iPhone."
+                  "1. Crie o atalho como em “Frase curta” acima.\n2. Ajustes › Acessibilidade › Toque › Tocar Atrás › Toque Triplo.\n3. Em “Atalhos”, escolha o atalho que você criou.\nDepois é só dar 3 toques nas costas do iPhone."
                 }
               </Text>
             </View>

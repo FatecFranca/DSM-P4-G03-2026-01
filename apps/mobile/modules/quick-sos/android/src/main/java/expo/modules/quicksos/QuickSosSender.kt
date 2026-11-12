@@ -20,8 +20,9 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Dispara o alerta direto na API, sem depender do JS (o app pode estar fechado):
- * POST /alerts/start e, em seguida, um ponto de GPS em POST /alerts/:id/location.
- * Roda em thread de fundo (faz rede e espera GPS).
+ * [send] faz o POST /alerts/start e [sendLocation] manda um ponto de GPS em
+ * POST /alerts/:id/location. São passos separados para a confirmação (vibração) sair assim
+ * que o alerta existe, sem esperar o GPS. Rodam em thread de fundo (rede e espera de GPS).
  */
 object QuickSosSender {
   private const val TIMEOUT_MS = 10_000
@@ -50,14 +51,12 @@ object QuickSosSender {
         res.status == 201 || res.status == 200 -> {
           val id = res.body?.optJSONObject("alert")?.optString("id")?.takeIf { it.isNotEmpty() }
           if (id != null) {
-            sendLocation(context, session, id)
             return QuickSosResult("sent", source, id, System.currentTimeMillis())
           }
         }
         res.status == 409 -> {
           val active = http("GET", "${session.apiBaseUrl}/alerts/active", session.accessToken, null)
           val id = active.body?.optJSONObject("alert")?.optString("id")?.takeIf { it.isNotEmpty() }
-          if (id != null) sendLocation(context, session, id)
           return QuickSosResult("already_active", source, id, System.currentTimeMillis())
         }
         res.status == 401 || res.status == 403 ->
@@ -161,7 +160,9 @@ object QuickSosSender {
     return fmt.format(Date(ms))
   }
 
-  private fun sendLocation(context: Context, session: QuickSosSession, alertId: String) {
+  /** Melhor esforço: sem sessão, permissão ou posição, não faz nada. */
+  fun sendLocation(context: Context, alertId: String) {
+    val session = QuickSosStore.session(context) ?: return
     val loc = bestLocation(context) ?: return
     val now = System.currentTimeMillis()
     // A API recusa capturedAt anterior ao início do alerta (-2 min). Sem fix novo, a última

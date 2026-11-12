@@ -1,4 +1,6 @@
 import AppIntents
+// `internal`: o ExpoModulesProvider gerado importa os módulos assim; sem o mesmo nível de
+// acesso o Swift recusa ("ambiguous implicit access level for import").
 internal import QuickSos
 
 // Copiado para o target do app por plugins/withQuickSos.js (o processador de metadados
@@ -42,6 +44,9 @@ struct QuickSosAppShortcuts: AppShortcutsProvider {
         "SOS no \(.applicationName)",
         "Ativar SOS no \(.applicationName)",
         "Emergência no \(.applicationName)",
+        "Preciso de ajuda no \(.applicationName)",
+        "Me ajuda no \(.applicationName)",
+        "Socorro no \(.applicationName)",
       ],
       shortTitle: "Pedir ajuda",
       systemImageName: "exclamationmark.shield.fill"

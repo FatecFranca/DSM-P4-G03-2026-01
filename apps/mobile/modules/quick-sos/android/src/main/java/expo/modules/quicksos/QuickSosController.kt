@@ -3,10 +3,12 @@ package expo.modules.quicksos
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 
 /**
  * Orquestra um disparo: contagem regressiva (cancelável repetindo o gesto, tocando no bloco
- * ou na notificação) -> envio nativo -> feedback (vibração + notificação) -> aviso ao JS.
+ * ou na notificação) -> envio nativo -> feedback (vibração + notificação) -> aviso ao JS
+ * -> ponto de GPS.
  * Todas as entradas públicas devem ser chamadas na main thread.
  */
 object QuickSosController {
@@ -14,8 +16,38 @@ object QuickSosController {
   const val SOURCE_TILE = "quick_tile"
   const val SOURCE_APP = "app"
 
+  // Folga para o envio depois da contagem: 3 tentativas de rede + espera do GPS.
+  private const val SEND_BUDGET_MS = 90_000L
+
   private val handler = Handler(Looper.getMainLooper())
   private var pendingFire: Runnable? = null
+  private var wakeLock: PowerManager.WakeLock? = null
+
+  /**
+   * O gesto costuma terminar com a tela apagada. Sem wake lock o aparelho pode dormir e a
+   * contagem (Handler) e a rede só voltariam a andar quando ele acordasse — o alerta atrasaria.
+   */
+  private fun holdAwake(app: Context, ms: Long) {
+    try {
+      releaseAwake()
+      val pm = app.getSystemService(PowerManager::class.java) ?: return
+      wakeLock =
+        pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "quicksos:trigger").apply {
+          setReferenceCounted(false)
+          acquire(ms)
+        }
+    } catch (_: Exception) {
+      // sem permissão WAKE_LOCK: segue no melhor esforço
+    }
+  }
+
+  private fun releaseAwake() {
+    try {
+      wakeLock?.let { if (it.isHeld) it.release() }
+    } catch (_: Exception) {
+    }
+    wakeLock = null
+  }
 
   @Volatile
   var isSending = false
@@ -34,6 +66,7 @@ object QuickSosController {
     if (isSending) return
 
     val seconds = QuickSosStore.settings(app).countdownSeconds
+    holdAwake(app, seconds.coerceAtLeast(0) * 1000L + SEND_BUDGET_MS)
     if (seconds <= 0) {
       fire(app, source)
       return
@@ -57,6 +90,7 @@ object QuickSosController {
     val runnable = pendingFire ?: return false
     handler.removeCallbacks(runnable)
     pendingFire = null
+    releaseAwake()
     QuickSosFeedback.clearCountdown(app)
     QuickSosFeedback.cancelled(app)
     QuickSosTileService.refresh(app)
@@ -73,6 +107,7 @@ object QuickSosController {
         } catch (e: Exception) {
           QuickSosResult("failed", source, null, System.currentTimeMillis(), e.message)
         }
+      // Confirma (vibração + aviso) assim que o alerta existe; o GPS vai depois, sem atrasar.
       handler.post {
         isSending = false
         val ok = result.status == "sent" || result.status == "already_active" || result.status == "test"
@@ -81,6 +116,18 @@ object QuickSosController {
         QuickSosFeedback.showResult(app, result)
         QuickSosEvents.emit(result)
         QuickSosTileService.refresh(app)
+      }
+      val alertId = result.alertId
+      if (alertId != null && (result.status == "sent" || result.status == "already_active")) {
+        try {
+          QuickSosSender.sendLocation(app, alertId)
+        } catch (_: Exception) {
+          // melhor esforço: o alerta já foi enviado
+        }
+      }
+      handler.post {
+        // Só solta se não começou outro disparo nesse meio-tempo.
+        if (pendingFire == null && !isSending) releaseAwake()
       }
     }, "QuickSosSender").start()
   }

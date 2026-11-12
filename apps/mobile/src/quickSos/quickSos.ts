@@ -2,6 +2,7 @@
  * SOS rápido: tipos e regras puras (sem React Native) compartilhadas pela tela, pela
  * sincronização e pelos testes. O disparo em si é nativo (modules/quick-sos).
  */
+import siriNicknames from "./siriNicknames.json";
 
 export type QuickSosStatus =
   | "sent"
@@ -183,8 +184,17 @@ export function siriPhrases(appName: string): string[] {
     `SOS no ${appName}`,
     `Ativar SOS no ${appName}`,
     `Emergência no ${appName}`,
+    `Preciso de ajuda no ${appName}`,
+    `Me ajuda no ${appName}`,
+    `Socorro no ${appName}`,
   ];
 }
+
+/**
+ * Apelidos do app para a Siri (INAlternativeAppNames no Info.plist, via app.config.ts): a
+ * usuária pode dizer "SOS no Proteger" em vez do nome em inglês.
+ */
+export const SIRI_APP_NICKNAMES: readonly string[] = siriNicknames;
 
 export function countdownLabel(seconds: CountdownSeconds): string {
   return seconds === 0 ? "Na hora" : `${seconds} s`;

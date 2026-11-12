@@ -102,7 +102,7 @@ enum QuickSosStorage {
   }
 }
 
-/// Dispara o alerta direto na API (POST /alerts/start + um ponto de GPS), sem depender do JS.
+/// Dispara o alerta direto na API (POST /alerts/start, confirmação, um ponto de GPS), sem depender do JS.
 /// Usado pelo App Intent da Siri / Atalhos / Toque traseiro / Botão de Ação e pelo módulo JS.
 public enum QuickSosRunner {
   public static let didTriggerNotification = Notification.Name("QuickSosDidTrigger")
@@ -112,8 +112,15 @@ public enum QuickSosRunner {
   public static func fire(source: String) async -> QuickSosOutcome {
     let outcome = await send(source: source)
     QuickSosStorage.setPending(outcome)
+    // Confirma (vibração) assim que o alerta existe; o GPS vai depois, sem atrasar.
+    await QuickSosFeedback.deliver(outcome)
     await MainActor.run {
       NotificationCenter.default.post(name: didTriggerNotification, object: nil, userInfo: outcome.dictionary)
+    }
+    if let alertId = outcome.alertId, outcome.status == "sent" || outcome.status == "already_active",
+      let session = QuickSosStorage.session()
+    {
+      await sendLocation(session: session, alertId: alertId)
     }
     return outcome
   }
@@ -134,13 +141,11 @@ public enum QuickSosRunner {
       switch status {
       case 200, 201:
         if let alert = body?["alert"] as? [String: Any], let id = alert["id"] as? String {
-          await sendLocation(session: session, alertId: id)
           return QuickSosOutcome(status: "sent", source: source, alertId: id)
         }
       case 409:
         let (_, active) = await http("GET", "\(session.apiBaseUrl)/alerts/active", session.accessToken, nil)
         let id = (active?["alert"] as? [String: Any])?["id"] as? String
-        if let id { await sendLocation(session: session, alertId: id) }
         return QuickSosOutcome(status: "already_active", source: source, alertId: id)
       case 401, 403:
         return QuickSosOutcome(status: "no_session", source: source, message: "Sessão expirada")
