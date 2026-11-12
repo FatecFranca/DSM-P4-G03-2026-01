@@ -32,6 +32,7 @@ import {
   onSosAudioCommand,
   updateSosAudioState,
 } from "./sosAudioStore";
+import { sosRecorderNative } from "./sosRecorderNative";
 
 /**
  * AAC mono em M4A, ~32 kbps: voz inteligível com ~60 KB por trecho de 15 s.
@@ -104,6 +105,8 @@ export function SosAudioRecorderSync() {
   const loopRunningRef = useRef(false);
   const wakeRef = useRef<(() => void) | null>(null);
   const pausedAlertsRef = useRef(new Set<string>());
+  /** Alerta dono dos trechos que o gravador nativo (iOS) emitir. */
+  const nativeAlertIdRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -195,12 +198,101 @@ export function SosAudioRecorderSync() {
       void flushAudioQueue(() => getAccessTokenRef.current());
     };
 
+    /** Fim de qualquer laço: status final e, se o alerta mudou, recomeça. */
+    const finishLoop = () => {
+      loopRunningRef.current = false;
+      const activeId = getActiveAlertId();
+      const current = getSosAudioState();
+      if (activeId && pausedAlertsRef.current.has(activeId)) {
+        setStatus("paused_by_user", activeId);
+      } else if (current.status !== "needs_permission" || !activeId) {
+        setStatus("idle", activeId);
+      }
+      if (desiredAlertId() && current.status !== "needs_permission") {
+        void runLoop();
+      }
+    };
+
+    /**
+     * iOS: gravador nativo contínuo (modules/sos-recorder). O microfone não é
+     * solto entre trechos, então segue gravando *e enviando* com a tela
+     * bloqueada; os trechos chegam pelo evento `onChunk`.
+     */
+    const runNativeLoop = async (
+      native: NonNullable<typeof sosRecorderNative>,
+    ) => {
+      let failures = 0;
+      let recordingAlertId: string | null = null;
+      let permissionChecked = false;
+      try {
+        for (;;) {
+          const alertId = desiredAlertId();
+          if (!alertId) {
+            break;
+          }
+          if (!permissionChecked) {
+            const mic = await readMicPermission();
+            if (!mic.granted) {
+              setStatus("needs_permission", alertId);
+              break;
+            }
+            permissionChecked = true;
+          }
+          if (recordingAlertId && recordingAlertId !== alertId) {
+            await native.stop().catch(() => undefined);
+            recordingAlertId = null;
+          }
+          if (recordingAlertId && !native.isRecording()) {
+            recordingAlertId = null;
+          }
+          if (!recordingAlertId) {
+            try {
+              setStatus("starting", alertId);
+              nativeAlertIdRef.current = alertId;
+              await native.start(SOS_AUDIO_CHUNK_MS);
+              recordingAlertId = alertId;
+              failures = 0;
+              updateSosAudioState({ foregroundOnly: false });
+              setStatus("recording", alertId);
+              logMobileTelemetry("audio_recording_started", { alertId });
+            } catch (error) {
+              failures += 1;
+              permissionChecked = false;
+              const foreground = AppState.currentState === "active";
+              setStatus(foreground ? "error" : "waiting_foreground", alertId);
+              logMobileTelemetry("audio_recording_failed", {
+                reason: foreground ? "start_failed" : "start_in_background",
+                message: error instanceof Error ? error.message : undefined,
+              });
+              await sleep(recorderRestartDelayMs(failures));
+              continue;
+            }
+          }
+          // Só vigia: o nativo corta e emite os trechos sozinho.
+          await sleep(SOS_AUDIO_CHUNK_MS);
+        }
+      } finally {
+        if (recordingAlertId) {
+          // Emite o último trecho (mesmo curto) antes de soltar o microfone.
+          await native.stop().catch(() => undefined);
+          logMobileTelemetry("audio_recording_stopped", {
+            alertId: recordingAlertId,
+          });
+        }
+        finishLoop();
+      }
+    };
+
     const runLoop = async () => {
       if (loopRunningRef.current) {
         wake();
         return;
       }
       loopRunningRef.current = true;
+      if (sosRecorderNative) {
+        await runNativeLoop(sosRecorderNative);
+        return;
+      }
       let audioModeOn = false;
       let failures = 0;
       let lastAlertId: string | null = null;
@@ -340,24 +432,32 @@ export function SosAudioRecorderSync() {
             alertId: lastAlertId ?? undefined,
           });
         }
-        loopRunningRef.current = false;
-        const activeId = getActiveAlertId();
-        const current = getSosAudioState();
-        if (activeId && pausedAlertsRef.current.has(activeId)) {
-          setStatus("paused_by_user", activeId);
-        } else if (current.status !== "needs_permission" || !activeId) {
-          setStatus("idle", activeId);
-        }
-        // O alerta pode ter mudado enquanto encerrávamos: confere de novo.
-        if (desiredAlertId() && current.status !== "needs_permission") {
-          void runLoop();
-        }
+        finishLoop();
       }
     };
 
     const kick = () => {
       void runLoop();
     };
+
+    const chunkSub = sosRecorderNative?.addListener("onChunk", (chunk) => {
+      const alertId = nativeAlertIdRef.current;
+      if (!alertId) {
+        return;
+      }
+      void saveChunk({
+        alertId,
+        fileUri: chunk.uri,
+        startedAt: Math.round(chunk.startedAt),
+        durationMs: chunk.durationMs,
+      });
+    });
+    const errorSub = sosRecorderNative?.addListener("onError", (error) => {
+      logMobileTelemetry("audio_recording_failed", {
+        reason: "native",
+        message: error.message,
+      });
+    });
 
     const unsubscribeAlert = onActiveAlertChange((alertId) => {
       if (!alertId) {
@@ -397,6 +497,8 @@ export function SosAudioRecorderSync() {
       unsubscribeAlert();
       unsubscribeCommands();
       appStateSub.remove();
+      chunkSub?.remove();
+      errorSub?.remove();
       clearInterval(flushTimer);
       wake();
     };
