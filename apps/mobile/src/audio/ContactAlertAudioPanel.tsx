@@ -245,8 +245,11 @@ export function ContactAlertAudioPanel({
     const next = nextLiveChunkId(chunks, lastPlayedId);
     if (next) {
       void playChunk(next, true);
+    } else if (ended && lastPlayedId !== null) {
+      // Registro encerrado: acabou o último trecho, volta ao botão inicial.
+      setLive(false);
     }
-  }, [chunks, lastPlayedId, live, loadingId, playChunk, playingId]);
+  }, [chunks, ended, lastPlayedId, live, loadingId, playChunk, playingId]);
 
   // …e já baixa o seguinte enquanto o atual toca, para não haver pausa.
   useEffect(() => {
