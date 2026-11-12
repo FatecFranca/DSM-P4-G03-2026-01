@@ -1,6 +1,20 @@
 import { getApiBaseUrl } from "../config/apiBaseUrl";
 import { formatFetchError } from "../lib/apiError";
 
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+/**
+ * Avisa quando uma chamada autenticada volta 401 (token expirado ou de outro
+ * servidor — o Keychain do iOS mantém a sessão mesmo reinstalando o app).
+ */
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
+}
+
 export type ApiResult<T> =
   | { ok: true; status: number; data: T }
   | { ok: false; status: number; body: unknown };
@@ -44,6 +58,11 @@ export async function apiFetchJson<T>(
   const body: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 401 && options.accessToken) {
+      for (const listener of unauthorizedListeners) {
+        listener();
+      }
+    }
     return { ok: false, status: response.status, body };
   }
 
