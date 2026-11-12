@@ -7,7 +7,7 @@ import {
   useAudioRecorder,
 } from "expo-audio";
 import { useEffect, useRef } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import {
   getActiveAlertId,
   onActiveAlertChange,
@@ -63,6 +63,15 @@ export const SOS_RECORDING_OPTIONS: RecordingOptions = {
   },
 };
 
+/**
+ * iOS: o próximo trecho começa *antes* de parar o atual (dois gravadores se
+ * revezando). Com a tela bloqueada o iOS só deixa abrir o microfone se ele já
+ * estiver em uso; parar e reabrir derrubava a gravação e o app era suspenso.
+ * Android: o serviço em primeiro plano segura o microfone (patch STOP_GRACE_MS),
+ * e dois MediaRecorder simultâneos falham em vários aparelhos — lá é em série.
+ */
+const OVERLAP_HANDOFF = Platform.OS === "ios";
+
 /** Fila parada sem gravação: tenta reenviar de tempos em tempos. */
 const IDLE_FLUSH_INTERVAL_MS = 60_000;
 
@@ -82,10 +91,11 @@ const IDLE_FLUSH_INTERVAL_MS = 60_000;
 export function SosAudioRecorderSync() {
   const { state, getAccessToken } = useAuth();
   const authenticated = state.status === "authenticated";
-  const recorder = useAudioRecorder(SOS_RECORDING_OPTIONS);
+  const recorderA = useAudioRecorder(SOS_RECORDING_OPTIONS);
+  const recorderB = useAudioRecorder(SOS_RECORDING_OPTIONS);
 
-  const recorderRef = useRef(recorder);
-  recorderRef.current = recorder;
+  const recordersRef = useRef([recorderA, recorderB]);
+  recordersRef.current = [recorderA, recorderB];
   const getAccessTokenRef = useRef(getAccessToken);
   getAccessTokenRef.current = getAccessToken;
   const authenticatedRef = useRef(authenticated);
@@ -131,6 +141,13 @@ export function SosAudioRecorderSync() {
       });
     };
 
+    type Recorder = typeof recorderA;
+    type LiveChunk = {
+      slot: 0 | 1;
+      alertId: string;
+      fileUri: string;
+      startedAt: number;
+    };
     type RecordedChunk = {
       alertId: string;
       fileUri: string;
@@ -138,21 +155,19 @@ export function SosAudioRecorderSync() {
       durationMs: number;
     };
 
-    const stopCurrent = async (
-      alertId: string,
-      fileUri: string,
-      startedAt: number,
-    ): Promise<RecordedChunk> => {
+    const recorderAt = (slot: 0 | 1): Recorder => recordersRef.current[slot];
+
+    const stopChunk = async (chunk: LiveChunk): Promise<RecordedChunk> => {
       try {
-        await recorderRef.current.stop();
+        await recorderAt(chunk.slot).stop();
       } catch {
         // Interrompido pelo sistema: o arquivo pode ainda ser aproveitável.
       }
       return {
-        alertId,
-        fileUri,
-        startedAt,
-        durationMs: Date.now() - startedAt,
+        alertId: chunk.alertId,
+        fileUri: chunk.fileUri,
+        startedAt: chunk.startedAt,
+        durationMs: Date.now() - chunk.startedAt,
       };
     };
 
@@ -190,9 +205,9 @@ export function SosAudioRecorderSync() {
       let failures = 0;
       let lastAlertId: string | null = null;
       let permissionChecked = false;
-      // Trecho recém-parado: só é salvo depois que o próximo já está gravando,
-      // para o intervalo sem microfone entre trechos ser o menor possível
-      // (no iOS, o app em segundo plano é suspenso se o áudio parar).
+      // Trecho gravando agora.
+      let live: LiveChunk | null = null;
+      // Trecho já parado (Android): salvo depois que o próximo começa.
       let pending: RecordedChunk | null = null;
       try {
         for (;;) {
@@ -211,7 +226,14 @@ export function SosAudioRecorderSync() {
             permissionChecked = true;
           }
 
-          const rec = recorderRef.current;
+          // Em série (Android) ou trocando de alerta: fecha o trecho atual antes.
+          if (live && (!OVERLAP_HANDOFF || live.alertId !== alertId)) {
+            pending = await stopChunk(live);
+            live = null;
+          }
+
+          const slot: 0 | 1 = live ? (live.slot === 0 ? 1 : 0) : 0;
+          const rec = recorderAt(slot);
           let fileUri = "";
           try {
             if (!audioModeOn) {
@@ -234,15 +256,32 @@ export function SosAudioRecorderSync() {
             await rec.prepareToRecordAsync(SOS_RECORDING_OPTIONS);
             fileUri = rec.uri ?? "";
             rec.record();
+            // No iOS, record() falha em silêncio (ex.: em segundo plano sem o
+            // microfone já aberto): confere o estado real do gravador.
+            if (Platform.OS === "ios" && !rec.isRecording) {
+              throw new Error("record_not_started");
+            }
           } catch (error) {
             failures += 1;
-            permissionChecked = false;
             const foreground = AppState.currentState === "active";
-            setStatus(foreground ? "error" : "waiting_foreground", alertId);
             logMobileTelemetry("audio_recording_failed", {
-              reason: foreground ? "start_failed" : "start_in_background",
+              reason: live
+                ? "handoff_failed"
+                : foreground
+                  ? "start_failed"
+                  : "start_in_background",
               message: error instanceof Error ? error.message : undefined,
             });
+            if (live) {
+              // O trecho atual continua gravando (fica mais longo): melhor
+              // que soltar o microfone. Tenta a troca de novo daqui a pouco.
+              await sleep(
+                Math.min(recorderRestartDelayMs(failures), SOS_AUDIO_CHUNK_MS),
+              );
+              continue;
+            }
+            permissionChecked = false;
+            setStatus(foreground ? "error" : "waiting_foreground", alertId);
             if (pending) {
               await saveChunk(pending);
               pending = null;
@@ -251,7 +290,17 @@ export function SosAudioRecorderSync() {
             continue;
           }
 
-          const startedAt = Date.now();
+          const next: LiveChunk = {
+            slot,
+            alertId,
+            fileUri,
+            startedAt: Date.now(),
+          };
+          // iOS: o novo já está gravando; só agora solta o anterior.
+          if (live) {
+            pending = await stopChunk(live);
+          }
+          live = next;
           if (pending) {
             void saveChunk(pending);
             pending = null;
@@ -265,14 +314,20 @@ export function SosAudioRecorderSync() {
           // Grava até completar o trecho ou o alerta mudar (encerrado/pausado).
           while (
             desiredAlertId() === alertId &&
-            Date.now() - startedAt < SOS_AUDIO_CHUNK_MS
+            Date.now() - next.startedAt < SOS_AUDIO_CHUNK_MS
           ) {
-            await sleep(SOS_AUDIO_CHUNK_MS - (Date.now() - startedAt));
+            await sleep(SOS_AUDIO_CHUNK_MS - (Date.now() - next.startedAt));
           }
-
-          pending = await stopCurrent(alertId, fileUri, startedAt);
+          if (desiredAlertId() !== alertId) {
+            pending = await stopChunk(next);
+            live = null;
+          }
         }
       } finally {
+        if (live) {
+          pending = await stopChunk(live);
+          live = null;
+        }
         if (pending) {
           await saveChunk(pending);
         }
