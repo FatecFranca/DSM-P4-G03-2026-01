@@ -254,3 +254,41 @@ export function nextLiveChunkId(
   }
   return chunks[index + 1]?.id ?? null;
 }
+
+/** Trechos por página na lista do contato. */
+export const AUDIO_PAGE_SIZE = 10;
+
+export function pageCount(total: number, pageSize = AUDIO_PAGE_SIZE): number {
+  return Math.max(1, Math.ceil(total / pageSize));
+}
+
+/** Itens da página `page` (0 = mais recentes); `items` já em ordem de exibição. */
+export function pageSlice<T>(
+  items: readonly T[],
+  page: number,
+  pageSize = AUDIO_PAGE_SIZE,
+): T[] {
+  const last = pageCount(items.length, pageSize) - 1;
+  const safe = Math.min(Math.max(0, page), last);
+  return items.slice(safe * pageSize, safe * pageSize + pageSize);
+}
+
+/**
+ * Botões do paginador: todas as páginas quando são poucas; senão a primeira,
+ * a última e as vizinhas da atual, com "…" nos saltos. Páginas a partir de 0.
+ */
+export function pageWindow(current: number, total: number): (number | "…")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i);
+  }
+  const keep = new Set([0, total - 1, current - 1, current, current + 1]);
+  const out: (number | "…")[] = [];
+  for (let i = 0; i < total; i++) {
+    if (keep.has(i)) {
+      out.push(i);
+    } else if (out[out.length - 1] !== "…") {
+      out.push("…");
+    }
+  }
+  return out;
+}

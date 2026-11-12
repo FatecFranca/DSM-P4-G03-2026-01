@@ -5,14 +5,16 @@ import {
   ListAlertAudioParamsSchema,
   ListAlertAudioQuerySchema,
   ListAlertAudioResponseSchema,
+  PinAlertAudioParamsSchema,
+  PinAlertAudioResponseSchema,
   PostAlertAudioParamsSchema,
   PostAlertAudioRequestSchema,
   PostAlertAudioResponseSchema,
 } from "@protecther/contracts";
-import { and, asc, eq, gt } from "drizzle-orm";
-import type { FastifyInstance } from "fastify";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../db/index.js";
-import { alertAudioChunks } from "../db/schema.js";
+import { alertAudioChunks, alertAudioPins } from "../db/schema.js";
 import { canReadAlertLocations, getAlertById } from "../lib/alertAccess.js";
 import {
   decideAudioUpload,
@@ -52,8 +54,9 @@ type ChunkMetaRow = {
   createdAt: Date;
 };
 
-function toChunkPublic(row: ChunkMetaRow): AlertAudioChunk {
+function toChunkPublic(row: ChunkMetaRow, pinned = false): AlertAudioChunk {
   return AlertAudioChunkSchema.parse({
+    pinned,
     id: row.id,
     capturedAt: row.capturedAt.toISOString(),
     durationMs: row.durationMs,
@@ -271,11 +274,103 @@ export async function registerAlertAudioRoutes(
       .orderBy(asc(alertAudioChunks.capturedAt))
       .limit(AUDIO_LIST_LIMIT);
 
+    const pinnedIds = new Set<string>();
+    if (rows.length > 0) {
+      const pins = await db
+        .select({ chunkId: alertAudioPins.chunkId })
+        .from(alertAudioPins)
+        .where(
+          and(
+            eq(alertAudioPins.userId, userId),
+            inArray(
+              alertAudioPins.chunkId,
+              rows.map((r) => r.id),
+            ),
+          ),
+        );
+      for (const pin of pins) {
+        pinnedIds.add(pin.chunkId);
+      }
+    }
+
     reply.header("Cache-Control", "private, no-store");
     return reply.send(
-      ListAlertAudioResponseSchema.parse({ chunks: rows.map(toChunkPublic) }),
+      ListAlertAudioResponseSchema.parse({
+        chunks: rows.map((r) => toChunkPublic(r, pinnedIds.has(r.id))),
+      }),
     );
   });
+
+  /** Fixar (PUT) / desafixar (DELETE) um trecho — vale só para quem pediu. */
+  const setPin = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+    pinned: boolean,
+  ) => {
+    const userId = getUserId(request);
+    if (!userId) {
+      return reply
+        .status(401)
+        .send(apiError("UNAUTHORIZED", "Missing authentication"));
+    }
+    const params = PinAlertAudioParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply
+        .status(400)
+        .send(apiError("VALIDATION_ERROR", params.error.message));
+    }
+    const alert = await getAlertById(params.data.id);
+    if (!alert) {
+      return reply
+        .status(404)
+        .send(apiError("ALERT_NOT_FOUND", "Alert not found"));
+    }
+    if (!(await canReadAlertLocations(userId, alert))) {
+      return reply
+        .status(403)
+        .send(apiError("FORBIDDEN", "Not allowed to read this alert"));
+    }
+    const [chunk] = await db
+      .select({ id: alertAudioChunks.id })
+      .from(alertAudioChunks)
+      .where(
+        and(
+          eq(alertAudioChunks.id, params.data.chunkId),
+          eq(alertAudioChunks.alertId, alert.id),
+        ),
+      )
+      .limit(1);
+    if (!chunk) {
+      return reply
+        .status(404)
+        .send(apiError("AUDIO_NOT_FOUND", "Audio chunk not found"));
+    }
+    if (pinned) {
+      await db
+        .insert(alertAudioPins)
+        .values({ userId, chunkId: chunk.id })
+        .onConflictDoNothing();
+    } else {
+      await db
+        .delete(alertAudioPins)
+        .where(
+          and(
+            eq(alertAudioPins.userId, userId),
+            eq(alertAudioPins.chunkId, chunk.id),
+          ),
+        );
+    }
+    return reply.send(
+      PinAlertAudioResponseSchema.parse({ chunkId: chunk.id, pinned }),
+    );
+  };
+
+  app.put("/alerts/:id/audio/:chunkId/pin", (request, reply) =>
+    setPin(request, reply, true),
+  );
+  app.delete("/alerts/:id/audio/:chunkId/pin", (request, reply) =>
+    setPin(request, reply, false),
+  );
 
   app.get("/alerts/:id/audio/:chunkId", async (request, reply) => {
     const userId = getUserId(request);

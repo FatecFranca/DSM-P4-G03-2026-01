@@ -1,6 +1,7 @@
 import {
   type AlertAudioChunk,
   ListAlertAudioResponseSchema,
+  PinAlertAudioResponseSchema,
 } from "@protecther/contracts";
 import {
   setAudioModeAsync,
@@ -26,13 +27,16 @@ import {
   formatChunkLabel,
   formatClock,
   nextLiveChunkId,
+  pageCount,
+  pageSlice,
+  pageWindow,
 } from "./sosAudio";
 
 /** Intervalo de busca de novos trechos (mais curto ouvindo ao vivo). */
 const POLL_MS = 10_000;
 const POLL_LIVE_MS = 4_000;
-/** Quantos trechos mostrar na lista (os mais recentes). */
-const LIST_VISIBLE = 12;
+/** Aba da lista: uma página de trechos (0 = mais recentes) ou os fixados. */
+type ListTab = { kind: "page"; page: number } | { kind: "pinned" };
 
 function mergeChunks(
   current: AlertAudioChunk[],
@@ -67,6 +71,8 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [lastPlayedId, setLastPlayedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<ListTab>({ kind: "page", page: 0 });
+  const [pinBusyId, setPinBusyId] = useState<string | null>(null);
 
   const lastCreatedAtRef = useRef<string | null>(null);
   const getAccessTokenRef = useRef(getAccessToken);
@@ -242,6 +248,33 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
     }
   }, [chunks, ensureDownloaded, lastPlayedId, live]);
 
+  /** Fixa/desafixa na hora (otimista) e desfaz se a API recusar. */
+  const togglePin = async (chunk: AlertAudioChunk) => {
+    const pinned = !chunk.pinned;
+    const apply = (value: boolean) =>
+      setChunks((current) =>
+        current.map((c) => (c.id === chunk.id ? { ...c, pinned: value } : c)),
+      );
+    apply(pinned);
+    setPinBusyId(chunk.id);
+    const res = await apiFetchJson<unknown>(
+      `/alerts/${encodeURIComponent(alertId)}/audio/${encodeURIComponent(chunk.id)}/pin`,
+      {
+        method: pinned ? "PUT" : "DELETE",
+        accessToken: getAccessTokenRef.current(),
+      },
+    );
+    setPinBusyId(null);
+    if (!res.ok || !PinAlertAudioResponseSchema.safeParse(res.data).success) {
+      apply(!pinned);
+      setError(
+        pinned
+          ? "Não foi possível fixar este trecho. Tente de novo."
+          : "Não foi possível desafixar este trecho. Tente de novo.",
+      );
+    }
+  };
+
   const toggleLive = () => {
     if (live) {
       setLive(false);
@@ -260,7 +293,14 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
     setLive(false);
   };
 
-  const visible = chunks.slice(-LIST_VISIBLE).reverse();
+  // Mais recentes primeiro, como uma conversa.
+  const newestFirst = [...chunks].reverse();
+  const pinnedChunks = newestFirst.filter((c) => c.pinned);
+  const totalPages = pageCount(newestFirst.length);
+  const currentPage =
+    tab.kind === "page" ? Math.min(tab.page, totalPages - 1) : -1;
+  const visible =
+    tab.kind === "pinned" ? pinnedChunks : pageSlice(newestFirst, currentPage);
   const latest = chunks[chunks.length - 1];
   const playingChunk = chunks.find((c) => c.id === playingId);
   const chunkSeconds = Math.round(SOS_AUDIO_CHUNK_MS / 1000);
@@ -302,33 +342,120 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
                 : "Aguardando o próximo trecho…"}
             </Text>
           ) : null}
+          <View style={styles.tabs} accessibilityRole="tablist">
+            <Pressable
+              onPress={() => setTab({ kind: "pinned" })}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab.kind === "pinned" }}
+              accessibilityLabel={`Trechos fixados (${pinnedChunks.length})`}
+              style={({ pressed }) => [
+                styles.tab,
+                tab.kind === "pinned" && styles.tabOn,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tabStar,
+                  tab.kind === "pinned" && styles.tabTextOn,
+                ]}
+              >
+                ★
+              </Text>
+            </Pressable>
+            {pageWindow(currentPage < 0 ? 0 : currentPage, totalPages).map(
+              (item, index) =>
+                item === "…" ? (
+                  <Text
+                    // biome-ignore lint/suspicious/noArrayIndexKey: reticências não têm id
+                    key={`gap-${index}`}
+                    style={styles.tabGap}
+                  >
+                    …
+                  </Text>
+                ) : (
+                  <Pressable
+                    key={item}
+                    onPress={() => setTab({ kind: "page", page: item })}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: currentPage === item }}
+                    accessibilityLabel={`Página ${item + 1} de ${totalPages}`}
+                    style={({ pressed }) => [
+                      styles.tab,
+                      currentPage === item && styles.tabOn,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        currentPage === item && styles.tabTextOn,
+                      ]}
+                    >
+                      {item + 1}
+                    </Text>
+                  </Pressable>
+                ),
+            )}
+          </View>
+          {tab.kind === "pinned" && pinnedChunks.length === 0 ? (
+            <Text style={styles.detail}>
+              Nenhum trecho fixado. Toque na estrela ao lado de um trecho para
+              guardá-lo aqui.
+            </Text>
+          ) : null}
           <View style={styles.list}>
             {visible.map((chunk) => {
               const isPlaying = playingId === chunk.id && status.playing;
               const isLoading = loadingId === chunk.id;
+              const label = formatChunkLabel(
+                chunk.capturedAt,
+                chunk.durationMs,
+              );
               return (
-                <Pressable
+                <View
                   key={chunk.id}
-                  onPress={() =>
-                    isPlaying ? stopPlayback() : void playChunk(chunk.id)
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel={`${isPlaying ? "Parar" : "Tocar"} trecho de ${formatChunkLabel(chunk.capturedAt, chunk.durationMs)}`}
-                  style={({ pressed }) => [
-                    styles.row,
-                    isPlaying && styles.rowPlaying,
-                    pressed && styles.pressed,
-                  ]}
+                  style={[styles.row, isPlaying && styles.rowPlaying]}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#C71657" />
-                  ) : (
-                    <Text style={styles.rowIcon}>{isPlaying ? "■" : "▶"}</Text>
-                  )}
-                  <Text style={styles.rowText}>
-                    {formatChunkLabel(chunk.capturedAt, chunk.durationMs)}
-                  </Text>
-                </Pressable>
+                  <Pressable
+                    onPress={() =>
+                      isPlaying ? stopPlayback() : void playChunk(chunk.id)
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`${isPlaying ? "Parar" : "Tocar"} trecho de ${label}`}
+                    style={({ pressed }) => [
+                      styles.rowMain,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#C71657" />
+                    ) : (
+                      <Text style={styles.rowIcon}>
+                        {isPlaying ? "■" : "▶"}
+                      </Text>
+                    )}
+                    <Text style={styles.rowText}>{label}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void togglePin(chunk)}
+                    disabled={pinBusyId === chunk.id}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: chunk.pinned }}
+                    accessibilityLabel={`${chunk.pinned ? "Desafixar" : "Fixar"} trecho de ${label}`}
+                    style={({ pressed }) => [
+                      styles.pinButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text
+                      style={[styles.pinIcon, chunk.pinned && styles.pinIconOn]}
+                    >
+                      {chunk.pinned ? "★" : "☆"}
+                    </Text>
+                  </Pressable>
+                </View>
               );
             })}
           </View>
@@ -386,16 +513,74 @@ const styles = StyleSheet.create({
   list: {
     gap: 6,
   },
-  row: {
-    minHeight: 44,
+  tabs: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
-    gap: 10,
+    gap: 6,
+  },
+  tab: {
+    minWidth: 36,
+    minHeight: 36,
     borderRadius: Radius.sm,
     borderWidth: 1,
     borderColor: "#E8B8C0",
     backgroundColor: "rgba(255,255,255,0.55)",
-    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  tabOn: {
+    backgroundColor: "#C72A67",
+    borderColor: "#C72A67",
+  },
+  tabText: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 14,
+    color: "#55383E",
+  },
+  tabStar: {
+    fontSize: 17,
+    color: "#C71657",
+  },
+  tabTextOn: {
+    color: "#FFFFFF",
+  },
+  tabGap: {
+    fontFamily: "Poppins_500Medium",
+    fontSize: 14,
+    color: "#6A5157",
+    paddingHorizontal: 2,
+  },
+  row: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: "#E8B8C0",
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
+  rowMain: {
+    flex: 1,
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingLeft: 12,
+  },
+  pinButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinIcon: {
+    fontSize: 20,
+    color: "#9B7B82",
+  },
+  pinIconOn: {
+    color: "#C71657",
   },
   rowPlaying: {
     borderColor: "#C71657",

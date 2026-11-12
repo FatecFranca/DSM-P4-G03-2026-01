@@ -56,6 +56,8 @@ export const AlertAudioChunkSchema = z.object({
   mimeType: AlertAudioMimeTypeSchema,
   sizeBytes: z.number().int(),
   createdAt: IsoDateTimeSchema,
+  /** Fixado (favorito) pelo usuário que fez a consulta. */
+  pinned: z.boolean().default(false),
 });
 
 export type AlertAudioChunk = z.infer<typeof AlertAudioChunkSchema>;
@@ -98,3 +100,13 @@ export const GetAlertAudioChunkParamsSchema = z.object({
 export type GetAlertAudioChunkParams = z.infer<
   typeof GetAlertAudioChunkParamsSchema
 >;
+
+/** PUT fixa, DELETE desafixa: `/alerts/:id/audio/:chunkId/pin`. */
+export const PinAlertAudioParamsSchema = GetAlertAudioChunkParamsSchema;
+
+export const PinAlertAudioResponseSchema = z.object({
+  chunkId: UuidSchema,
+  pinned: z.boolean(),
+});
+
+export type PinAlertAudioResponse = z.infer<typeof PinAlertAudioResponseSchema>;

@@ -50,6 +50,13 @@
       "when": 1794438357395,
       "tag": "0007_alert_audio_chunks",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794450325701,
+      "tag": "0008_alert_audio_pins",
+      "breakpoints": true
     }
   ]
 }

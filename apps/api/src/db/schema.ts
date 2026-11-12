@@ -8,6 +8,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -197,6 +198,23 @@ export const alertAudioChunks = pgTable(
     ),
     index("alert_audio_chunks_created_idx").on(table.createdAt),
   ],
+);
+
+/** Trechos "fixados" (favoritos) por cada usuário que pode ouvir o alerta. */
+export const alertAudioPins = pgTable(
+  "alert_audio_pins",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chunkId: uuid("chunk_id")
+      .notNull()
+      .references(() => alertAudioChunks.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.chunkId] })],
 );
 
 export const alertAcknowledgments = pgTable(

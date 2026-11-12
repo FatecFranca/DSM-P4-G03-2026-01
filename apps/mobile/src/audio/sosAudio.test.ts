@@ -10,6 +10,9 @@ import {
   formatChunkLabel,
   makeClientChunkId,
   nextLiveChunkId,
+  pageCount,
+  pageSlice,
+  pageWindow,
   recorderRestartDelayMs,
   retryDelayMs,
   shouldShowMicExplanation,
@@ -199,5 +202,31 @@ describe("nextLiveChunkId", () => {
 
   it("sem trechos não toca nada", () => {
     expect(nextLiveChunkId([], null)).toBeNull();
+  });
+});
+
+describe("paginação dos trechos", () => {
+  it("conta páginas (mínimo 1)", () => {
+    expect(pageCount(0)).toBe(1);
+    expect(pageCount(10)).toBe(1);
+    expect(pageCount(11)).toBe(2);
+  });
+
+  it("recorta a página e prende páginas fora do intervalo", () => {
+    const items = Array.from({ length: 25 }, (_, i) => i);
+    expect(pageSlice(items, 0)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(pageSlice(items, 2)).toEqual([20, 21, 22, 23, 24]);
+    expect(pageSlice(items, 9)).toEqual([20, 21, 22, 23, 24]);
+    expect(pageSlice(items, -1)).toEqual(pageSlice(items, 0));
+  });
+
+  it("mostra todas as páginas quando são poucas", () => {
+    expect(pageWindow(0, 3)).toEqual([0, 1, 2]);
+  });
+
+  it("encurta com reticências quando são muitas", () => {
+    expect(pageWindow(0, 12)).toEqual([0, 1, "…", 11]);
+    expect(pageWindow(5, 12)).toEqual([0, "…", 4, 5, 6, "…", 11]);
+    expect(pageWindow(11, 12)).toEqual([0, "…", 10, 11]);
   });
 });
