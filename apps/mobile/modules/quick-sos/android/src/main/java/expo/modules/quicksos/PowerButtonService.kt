@@ -19,15 +19,26 @@ import android.os.SystemClock
 class PowerButtonService : Service() {
   private val detector = PowerPressDetector()
   private var registered = false
+  // Alguns aparelhos disparam o mesmo broadcast de tela mais de uma vez (eco). Só conta o
+  // toque quando o estado realmente alterna (OFF→ON→OFF…): um duplicado não conta de novo.
+  private var lastScreenOn: Boolean? = null
 
   private val screenReceiver =
     object : BroadcastReceiver() {
       override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_SCREEN_ON && intent.action != Intent.ACTION_SCREEN_OFF) return
+        val screenOn =
+          when (intent.action) {
+            Intent.ACTION_SCREEN_ON -> true
+            Intent.ACTION_SCREEN_OFF -> false
+            else -> return
+          }
         if (isInCall()) {
           detector.reset()
+          lastScreenOn = screenOn
           return
         }
+        if (screenOn == lastScreenOn) return
+        lastScreenOn = screenOn
         if (detector.onPress(SystemClock.elapsedRealtime())) {
           QuickSosController.request(this@PowerButtonService, QuickSosController.SOURCE_POWER)
         }

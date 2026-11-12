@@ -23,7 +23,7 @@ object QuickSosFeedback {
   private const val RESULT_NOTIFICATION_ID = 41_003
 
   // Padrões: armado (1 curta), cancelado (2 curtas), enviado (1 longa), falha (3 curtas).
-  private val ARMED = longArrayOf(0, 90)
+  private val ARMED = longArrayOf(0, 220)
   private val CANCELLED = longArrayOf(0, 60, 90, 60)
   private val SENT = longArrayOf(0, 450)
   private val FAILED = longArrayOf(0, 120, 100, 120, 100, 120)

@@ -67,11 +67,12 @@ object QuickSosController {
 
     val seconds = QuickSosStore.settings(app).countdownSeconds
     holdAwake(app, seconds.coerceAtLeast(0) * 1000L + SEND_BUDGET_MS)
+    // Confirmação tátil imediata: vibra assim que o gesto é reconhecido, com ou sem contagem.
+    QuickSosFeedback.armed(app)
     if (seconds <= 0) {
       fire(app, source)
       return
     }
-    QuickSosFeedback.armed(app)
     val runnable =
       Runnable {
         pendingFire = null
