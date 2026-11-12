@@ -110,3 +110,16 @@ export const PinAlertAudioResponseSchema = z.object({
 });
 
 export type PinAlertAudioResponse = z.infer<typeof PinAlertAudioResponseSchema>;
+
+/**
+ * DELETE `/alerts/:id/audio/:chunkId`: a dona do alerta apaga o trecho para
+ * todos (`everyone`); um contato só o tira da própria lista (`me`).
+ */
+export const RemoveAlertAudioResponseSchema = z.object({
+  chunkId: UuidSchema,
+  removedFor: z.enum(["everyone", "me"]),
+});
+
+export type RemoveAlertAudioResponse = z.infer<
+  typeof RemoveAlertAudioResponseSchema
+>;

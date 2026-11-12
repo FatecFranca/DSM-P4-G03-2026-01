@@ -217,6 +217,23 @@ export const alertAudioPins = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.chunkId] })],
 );
 
+/** Trechos que um contato tirou da própria lista (para os outros continuam). */
+export const alertAudioHidden = pgTable(
+  "alert_audio_hidden",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chunkId: uuid("chunk_id")
+      .notNull()
+      .references(() => alertAudioChunks.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.chunkId] })],
+);
+
 export const alertAcknowledgments = pgTable(
   "alert_acknowledgments",
   {

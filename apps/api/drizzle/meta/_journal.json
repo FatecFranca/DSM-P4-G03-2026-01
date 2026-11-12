@@ -57,6 +57,13 @@
       "when": 1794450325701,
       "tag": "0008_alert_audio_pins",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794450826024,
+      "tag": "0009_alert_audio_hidden",
+      "breakpoints": true
     }
   ]
 }

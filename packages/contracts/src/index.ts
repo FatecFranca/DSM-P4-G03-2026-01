@@ -120,6 +120,8 @@ export {
   PinAlertAudioParamsSchema,
   type PinAlertAudioResponse,
   PinAlertAudioResponseSchema,
+  type RemoveAlertAudioResponse,
+  RemoveAlertAudioResponseSchema,
   ListAlertAudioParamsSchema,
   ListAlertAudioQuerySchema,
   ListAlertAudioResponseSchema,
@@ -135,3 +137,5 @@ export {
   type PostAlertAudioRequest,
   type PostAlertAudioResponse,
 } from "./alertAudio.js";
+
+export * from "./alertHistory.js";

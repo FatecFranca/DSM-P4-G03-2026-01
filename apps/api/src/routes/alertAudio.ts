@@ -10,11 +10,16 @@ import {
   PostAlertAudioParamsSchema,
   PostAlertAudioRequestSchema,
   PostAlertAudioResponseSchema,
+  RemoveAlertAudioResponseSchema,
 } from "@protecther/contracts";
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, notExists, sql } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { db } from "../db/index.js";
-import { alertAudioChunks, alertAudioPins } from "../db/schema.js";
+import {
+  alertAudioChunks,
+  alertAudioHidden,
+  alertAudioPins,
+} from "../db/schema.js";
 import { canReadAlertLocations, getAlertById } from "../lib/alertAccess.js";
 import {
   decideAudioUpload,
@@ -262,7 +267,20 @@ export async function registerAlertAudioRoutes(
         .send(apiError("FORBIDDEN", "Not allowed to read this alert"));
     }
 
-    const filters = [eq(alertAudioChunks.alertId, alertId)];
+    const filters = [
+      eq(alertAudioChunks.alertId, alertId),
+      notExists(
+        db
+          .select({ one: sql`1` })
+          .from(alertAudioHidden)
+          .where(
+            and(
+              eq(alertAudioHidden.userId, userId),
+              sql`${alertAudioHidden.chunkId} = ${alertAudioChunks.id}`,
+            ),
+          ),
+      ),
+    ];
     if (query.data.since !== undefined) {
       filters.push(gt(alertAudioChunks.createdAt, new Date(query.data.since)));
     }
@@ -366,8 +384,9 @@ export async function registerAlertAudioRoutes(
   };
 
   /**
-   * Excluir um trecho de vez (para todos), a qualquer momento: a dona do
-   * alerta e os contatos que podem ouvi-lo.
+   * Excluir um trecho a qualquer momento. A dona do alerta apaga de vez, para
+   * todos; um contato só tira da própria lista (e desafixa), para não apagar
+   * uma prova que a titular queira guardar.
    */
   app.delete("/alerts/:id/audio/:chunkId", async (request, reply) => {
     const userId = getUserId(request);
@@ -393,25 +412,63 @@ export async function registerAlertAudioRoutes(
         .status(403)
         .send(apiError("FORBIDDEN", "Not allowed to read this alert"));
     }
-    const deleted = await db
-      .delete(alertAudioChunks)
-      .where(
-        and(
-          eq(alertAudioChunks.id, params.data.chunkId),
-          eq(alertAudioChunks.alertId, alert.id),
-        ),
-      )
-      .returning({ id: alertAudioChunks.id });
-    if (deleted.length === 0) {
+    const chunkFilter = and(
+      eq(alertAudioChunks.id, params.data.chunkId),
+      eq(alertAudioChunks.alertId, alert.id),
+    );
+
+    if (alert.ownerUserId === userId) {
+      const deleted = await db
+        .delete(alertAudioChunks)
+        .where(chunkFilter)
+        .returning({ id: alertAudioChunks.id });
+      if (deleted.length === 0) {
+        return reply
+          .status(404)
+          .send(apiError("AUDIO_NOT_FOUND", "Audio chunk not found"));
+      }
+      request.log.info(
+        { alertId: alert.id, chunkId: params.data.chunkId },
+        "alert_audio_deleted",
+      );
+      return reply.send(
+        RemoveAlertAudioResponseSchema.parse({
+          chunkId: params.data.chunkId,
+          removedFor: "everyone",
+        }),
+      );
+    }
+
+    const [chunk] = await db
+      .select({ id: alertAudioChunks.id })
+      .from(alertAudioChunks)
+      .where(chunkFilter)
+      .limit(1);
+    if (!chunk) {
       return reply
         .status(404)
         .send(apiError("AUDIO_NOT_FOUND", "Audio chunk not found"));
     }
-    request.log.info(
-      { alertId: alert.id, chunkId: params.data.chunkId, userId },
-      "alert_audio_deleted",
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(alertAudioHidden)
+        .values({ userId, chunkId: chunk.id })
+        .onConflictDoNothing();
+      await tx
+        .delete(alertAudioPins)
+        .where(
+          and(
+            eq(alertAudioPins.userId, userId),
+            eq(alertAudioPins.chunkId, chunk.id),
+          ),
+        );
+    });
+    return reply.send(
+      RemoveAlertAudioResponseSchema.parse({
+        chunkId: chunk.id,
+        removedFor: "me",
+      }),
     );
-    return reply.status(204).send();
   });
 
   app.put("/alerts/:id/audio/:chunkId/pin", (request, reply) =>
