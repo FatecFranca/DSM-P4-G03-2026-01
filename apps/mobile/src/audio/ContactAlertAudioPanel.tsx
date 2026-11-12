@@ -125,11 +125,15 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
     };
   }, [cacheDir]);
 
-  const playChunk = useCallback(
-    async (chunkId: string) => {
-      setLoadingId(chunkId);
-      setError(null);
-      try {
+  /** Baixa o trecho (uma vez só, mesmo com chamadas simultâneas). */
+  const downloadsRef = useRef(new Map<string, Promise<File>>());
+  const ensureDownloaded = useCallback(
+    (chunkId: string): Promise<File> => {
+      const existing = downloadsRef.current.get(chunkId);
+      if (existing) {
+        return existing;
+      }
+      const job = (async () => {
         if (!cacheDir.exists) {
           cacheDir.create({ intermediates: true, idempotent: true });
         }
@@ -145,6 +149,22 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
             },
           );
         }
+        return target;
+      })();
+      downloadsRef.current.set(chunkId, job);
+      // Falhou: libera para tentar de novo depois.
+      job.catch(() => downloadsRef.current.delete(chunkId));
+      return job;
+    },
+    [alertId, cacheDir],
+  );
+
+  const playChunk = useCallback(
+    async (chunkId: string, fromLive = false) => {
+      setLoadingId(chunkId);
+      setError(null);
+      try {
+        const target = await ensureDownloaded(chunkId);
         await setAudioModeAsync({
           playsInSilentMode: true,
           shouldPlayInBackground: false,
@@ -155,31 +175,72 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
         setPlayingId(chunkId);
         setLastPlayedId(chunkId);
       } catch {
-        setError("Não foi possível tocar este trecho. Tente de novo.");
+        if (fromLive) {
+          // Ao vivo não trava num trecho com problema: pula para o seguinte.
+          setLastPlayedId(chunkId);
+        } else {
+          setError("Não foi possível tocar este trecho. Tente de novo.");
+        }
       } finally {
         setLoadingId(null);
       }
     },
-    [alertId, cacheDir, player],
+    [ensureDownloaded, player],
   );
 
-  // Ao terminar um trecho no modo ao vivo, toca o próximo (se já chegou).
+  // Fim do trecho: ouve o evento direto do player (o estado do hook pode
+  // juntar atualizações e perder o `didJustFinish`, travando o ao vivo).
   useEffect(() => {
-    if (!status.didJustFinish) {
-      return;
-    }
-    setPlayingId(null);
-  }, [status.didJustFinish]);
+    const sub = player.addListener("playbackStatusUpdate", (s) => {
+      if (s.didJustFinish) {
+        setPlayingId(null);
+      }
+    });
+    return () => sub.remove();
+  }, [player]);
 
+  // Rede de segurança: parou no fim sem o evento chegar.
+  useEffect(() => {
+    if (
+      playingId !== null &&
+      loadingId === null &&
+      status.isLoaded &&
+      !status.playing &&
+      status.duration > 0 &&
+      status.currentTime >= status.duration - 0.3
+    ) {
+      setPlayingId(null);
+    }
+  }, [
+    loadingId,
+    playingId,
+    status.currentTime,
+    status.duration,
+    status.isLoaded,
+    status.playing,
+  ]);
+
+  // Ao vivo: toca o próximo assim que o atual termina (se já chegou)…
   useEffect(() => {
     if (!live || playingId !== null || loadingId !== null) {
       return;
     }
     const next = nextLiveChunkId(chunks, lastPlayedId);
     if (next) {
-      void playChunk(next);
+      void playChunk(next, true);
     }
   }, [chunks, lastPlayedId, live, loadingId, playChunk, playingId]);
+
+  // …e já baixa o seguinte enquanto o atual toca, para não haver pausa.
+  useEffect(() => {
+    if (!live || !lastPlayedId) {
+      return;
+    }
+    const upcoming = nextLiveChunkId(chunks, lastPlayedId);
+    if (upcoming) {
+      void ensureDownloaded(upcoming).catch(() => undefined);
+    }
+  }, [chunks, ensureDownloaded, lastPlayedId, live]);
 
   const toggleLive = () => {
     if (live) {
@@ -201,6 +262,7 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
 
   const visible = chunks.slice(-LIST_VISIBLE).reverse();
   const latest = chunks[chunks.length - 1];
+  const playingChunk = chunks.find((c) => c.id === playingId);
   const chunkSeconds = Math.round(SOS_AUDIO_CHUNK_MS / 1000);
 
   return (
@@ -235,8 +297,8 @@ export function ContactAlertAudioPanel({ alertId }: { alertId: string }) {
           </Pressable>
           {live ? (
             <Text style={styles.meta}>
-              {playingId
-                ? "Tocando o trecho mais recente…"
+              {playingChunk
+                ? `Tocando o trecho de ${formatClock(playingChunk.capturedAt)}…`
                 : "Aguardando o próximo trecho…"}
             </Text>
           ) : null}
