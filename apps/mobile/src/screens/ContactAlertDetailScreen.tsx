@@ -118,7 +118,11 @@ export function ContactAlertDetailScreen({ route }: Props) {
           onMapTouchChange={setMapTouching}
         />
 
-        <ContactAlertAudioPanel alertId={alertId} isOwner={isOwner === true} />
+        <ContactAlertAudioPanel
+          alertId={alertId}
+          isOwner={isOwner === true}
+          ended={ended}
+        />
 
         {confirmedAt ? (
           <View style={styles.ackConfirmed}>

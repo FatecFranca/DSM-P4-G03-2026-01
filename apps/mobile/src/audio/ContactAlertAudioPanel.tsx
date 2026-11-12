@@ -63,8 +63,11 @@ function mergeChunks(
 export function ContactAlertAudioPanel({
   alertId,
   isOwner = false,
+  ended = false,
 }: {
   alertId: string;
+  /** Alerta encerrado: "ouvir" toca tudo em ordem, do primeiro trecho. */
+  ended?: boolean;
   /** Titular: excluir apaga para todos; contato: só tira da própria lista. */
   isOwner?: boolean;
 }) {
@@ -341,7 +344,13 @@ export function ContactAlertAudioPanel({
       return;
     }
     setLive(true);
-    // Começa pelo trecho mais recente: é o que está acontecendo agora.
+    const first = chunks[0];
+    if (ended && first) {
+      // Registro encerrado: ouve tudo em ordem, do começo.
+      void playChunk(first.id, true);
+      return;
+    }
+    // Ao vivo: começa pelo trecho mais recente (o que está acontecendo agora).
     setLastPlayedId(null);
   };
 
@@ -390,14 +399,20 @@ export function ContactAlertAudioPanel({
             ]}
           >
             <Text style={styles.liveButtonText}>
-              {live ? "Parar de ouvir" : "Ouvir ao vivo"}
+              {live
+                ? "Parar de ouvir"
+                : ended
+                  ? "Ouvir tudo do início"
+                  : "Ouvir ao vivo"}
             </Text>
           </Pressable>
           {live ? (
             <Text style={styles.meta}>
               {playingChunk
                 ? `Tocando o trecho de ${formatClock(playingChunk.capturedAt)}…`
-                : "Aguardando o próximo trecho…"}
+                : ended
+                  ? "Fim da gravação."
+                  : "Aguardando o próximo trecho…"}
             </Text>
           ) : null}
           <View style={styles.tabs} accessibilityRole="tablist">
