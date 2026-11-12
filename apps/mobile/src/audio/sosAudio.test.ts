@@ -31,7 +31,7 @@ function chunk(id: string, capturedAt: string): QueuedAudioChunk {
 }
 
 describe("SOS_AUDIO_CHUNK_MS", () => {
-  it("envia um trecho a cada 15 segundos", () => {
+  it("envia um áudio a cada 15 segundos", () => {
     expect(SOS_AUDIO_CHUNK_MS).toBe(15_000);
   });
 });
@@ -142,7 +142,7 @@ describe("shouldShowMicExplanation", () => {
 });
 
 describe("describeSosAudioStatus", () => {
-  it("explica a gravação e os trechos pendentes", () => {
+  it("explica a gravação e os áudios pendentes", () => {
     const text = describeSosAudioStatus({
       ...INITIAL_SOS_AUDIO_STATE,
       status: "recording",
@@ -150,7 +150,7 @@ describe("describeSosAudioStatus", () => {
     });
     expect(text.tone).toBe("ok");
     expect(text.detail).toContain("a cada 15 s");
-    expect(text.detail).toContain("2 trechos aguardam conexão");
+    expect(text.detail).toContain("2 áudios aguardam conexão");
   });
 
   it("avisa quando só grava com o app aberto", () => {
@@ -200,12 +200,12 @@ describe("nextLiveChunkId", () => {
     expect(nextLiveChunkId(chunks, "c")).toBeNull();
   });
 
-  it("sem trechos não toca nada", () => {
+  it("sem áudios não toca nada", () => {
     expect(nextLiveChunkId([], null)).toBeNull();
   });
 });
 
-describe("paginação dos trechos", () => {
+describe("paginação dos áudios", () => {
   it("conta páginas (mínimo 1)", () => {
     expect(pageCount(0)).toBe(1);
     expect(pageCount(10)).toBe(1);

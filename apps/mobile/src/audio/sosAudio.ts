@@ -168,14 +168,14 @@ export function describeSosAudioStatus(
   const pending =
     state.pendingUploads > 0
       ? ` ${state.pendingUploads} ${
-          state.pendingUploads === 1 ? "trecho aguarda" : "trechos aguardam"
+          state.pendingUploads === 1 ? "áudio aguarda" : "áudios aguardam"
         } conexão para enviar.`
       : "";
   switch (state.status) {
     case "recording":
       return {
         title: "Gravando o som ambiente",
-        detail: `Seus contatos recebem um trecho a cada ${seconds} s.${
+        detail: `Seus contatos recebem um áudio a cada ${seconds} s.${
           state.foregroundOnly
             ? " Mantenha o app aberto: sem notificações permitidas, a gravação pausa em segundo plano."
             : ""
@@ -185,7 +185,7 @@ export function describeSosAudioStatus(
     case "starting":
       return {
         title: "Ligando o microfone…",
-        detail: `Os trechos começam a ser enviados em instantes.${pending}`,
+        detail: `Os áudios começam a ser enviados em instantes.${pending}`,
         tone: "neutral",
       };
     case "needs_permission":

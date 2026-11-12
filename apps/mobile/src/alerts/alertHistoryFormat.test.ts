@@ -44,10 +44,10 @@ describe("timeRangeLabel", () => {
 });
 
 describe("audioSummaryLabel", () => {
-  it("resume os trechos", () => {
+  it("resume os áudios", () => {
     expect(audioSummaryLabel(0, 0)).toBe("Nenhum áudio");
-    expect(audioSummaryLabel(1, 15_000)).toBe("1 trecho · 15 s");
-    expect(audioSummaryLabel(30, 450_000)).toBe("30 trechos · 7 min");
+    expect(audioSummaryLabel(1, 15_000)).toBe("1 áudio · 15 s");
+    expect(audioSummaryLabel(30, 450_000)).toBe("30 áudios · 7 min");
   });
 });
 

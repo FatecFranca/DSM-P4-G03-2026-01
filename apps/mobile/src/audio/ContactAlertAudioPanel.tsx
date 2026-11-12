@@ -196,7 +196,7 @@ export function ContactAlertAudioPanel({
           // Ao vivo não trava num trecho com problema: pula para o seguinte.
           setLastPlayedId(chunkId);
         } else {
-          setError("Não foi possível tocar este trecho. Tente de novo.");
+          setError("Não foi possível tocar este áudio. Tente de novo.");
         }
       } finally {
         setLoadingId(null);
@@ -283,8 +283,8 @@ export function ContactAlertAudioPanel({
       apply(!pinned);
       setError(
         pinned
-          ? "Não foi possível fixar este trecho. Tente de novo."
-          : "Não foi possível desafixar este trecho. Tente de novo.",
+          ? "Não foi possível fixar este áudio. Tente de novo."
+          : "Não foi possível desafixar este áudio. Tente de novo.",
       );
     }
   };
@@ -300,8 +300,8 @@ export function ContactAlertAudioPanel({
     if (!res.ok && res.status !== 404) {
       setError(
         isOwner
-          ? "Não foi possível excluir este trecho. Tente de novo."
-          : "Não foi possível remover este trecho. Tente de novo.",
+          ? "Não foi possível excluir este áudio. Tente de novo."
+          : "Não foi possível remover este áudio. Tente de novo.",
       );
       return;
     }
@@ -324,10 +324,10 @@ export function ContactAlertAudioPanel({
   const confirmDelete = (chunk: AlertAudioChunk) => {
     const label = formatChunkLabel(chunk.capturedAt, chunk.durationMs);
     Alert.alert(
-      isOwner ? "Excluir este trecho?" : "Remover da sua lista?",
+      isOwner ? "Excluir este áudio?" : "Remover da sua lista?",
       isOwner
         ? `O áudio de ${label} será apagado de vez, para você e para seus contatos.`
-        : `O trecho de ${label} sai só da sua lista. A titular continua com ele.`,
+        : `O áudio de ${label} sai só da sua lista. A titular continua com ele.`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -383,13 +383,13 @@ export function ContactAlertAudioPanel({
       ) : chunks.length === 0 ? (
         <Text style={styles.detail}>
           Nenhum áudio recebido ainda. Se o microfone estiver liberado no
-          celular dela, os trechos aparecem aqui a cada {chunkSeconds} segundos.
+          celular dela, os áudios aparecem aqui a cada {chunkSeconds} segundos.
         </Text>
       ) : (
         <>
           <Text style={styles.detail}>
             {chunks.length}{" "}
-            {chunks.length === 1 ? "trecho recebido" : "trechos recebidos"}.
+            {chunks.length === 1 ? "áudio recebido" : "áudios recebidos"}.
             {latest ? ` Último às ${formatClock(latest.capturedAt)}.` : ""}
           </Text>
           <Pressable
@@ -412,10 +412,10 @@ export function ContactAlertAudioPanel({
           {live ? (
             <Text style={styles.meta}>
               {playingChunk
-                ? `Tocando o trecho de ${formatClock(playingChunk.capturedAt)}…`
+                ? `Tocando o áudio de ${formatClock(playingChunk.capturedAt)}…`
                 : ended
                   ? "Fim da gravação."
-                  : "Aguardando o próximo trecho…"}
+                  : "Aguardando o próximo áudio…"}
             </Text>
           ) : null}
           <View style={styles.tabs} accessibilityRole="tablist">
@@ -423,7 +423,7 @@ export function ContactAlertAudioPanel({
               onPress={() => setTab({ kind: "pinned" })}
               accessibilityRole="tab"
               accessibilityState={{ selected: tab.kind === "pinned" }}
-              accessibilityLabel={`Trechos fixados (${pinnedChunks.length})`}
+              accessibilityLabel={`Áudios fixados (${pinnedChunks.length})`}
               style={({ pressed }) => [
                 styles.tab,
                 tab.kind === "pinned" && styles.tabOn,
@@ -476,7 +476,7 @@ export function ContactAlertAudioPanel({
           </View>
           {tab.kind === "pinned" && pinnedChunks.length === 0 ? (
             <Text style={styles.detail}>
-              Nenhum trecho fixado. Toque na estrela ao lado de um trecho para
+              Nenhum áudio fixado. Toque na estrela ao lado de um áudio para
               guardá-lo aqui por até 1 ano (os outros são apagados em 30 dias).
             </Text>
           ) : null}
@@ -498,7 +498,7 @@ export function ContactAlertAudioPanel({
                       isPlaying ? stopPlayback() : void playChunk(chunk.id)
                     }
                     accessibilityRole="button"
-                    accessibilityLabel={`${isPlaying ? "Parar" : "Tocar"} trecho de ${label}`}
+                    accessibilityLabel={`${isPlaying ? "Parar" : "Tocar"} áudio de ${label}`}
                     style={({ pressed }) => [
                       styles.rowMain,
                       pressed && styles.pressed,
@@ -519,7 +519,7 @@ export function ContactAlertAudioPanel({
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityState={{ selected: chunk.pinned }}
-                    accessibilityLabel={`${chunk.pinned ? "Desafixar" : "Fixar"} trecho de ${label}`}
+                    accessibilityLabel={`${chunk.pinned ? "Desafixar" : "Fixar"} áudio de ${label}`}
                     style={({ pressed }) => [
                       styles.pinButton,
                       pressed && styles.pressed,
@@ -536,7 +536,7 @@ export function ContactAlertAudioPanel({
                     disabled={pinBusyId === chunk.id}
                     hitSlop={8}
                     accessibilityRole="button"
-                    accessibilityLabel={`${isOwner ? "Excluir" : "Remover da sua lista o"} trecho de ${label}`}
+                    accessibilityLabel={`${isOwner ? "Excluir" : "Remover da sua lista o"} áudio de ${label}`}
                     style={({ pressed }) => [
                       styles.pinButton,
                       pressed && styles.pressed,

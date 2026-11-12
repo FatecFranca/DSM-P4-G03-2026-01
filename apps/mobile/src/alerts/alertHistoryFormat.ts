@@ -83,7 +83,7 @@ export function audioSummaryLabel(chunks: number, totalMs: number): string {
     totalMs < 60_000
       ? `${Math.max(1, Math.round(totalMs / 1000))} s`
       : durationLabel(totalMs);
-  return `${chunks} ${chunks === 1 ? "trecho" : "trechos"} · ${length}`;
+  return `${chunks} ${chunks === 1 ? "áudio" : "áudios"} · ${length}`;
 }
 
 export type DaySection<T> = { title: string; key: string; data: T[] };

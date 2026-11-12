@@ -67,7 +67,7 @@ export function SosAudioStatusCard({ alertId }: { alertId: string }) {
       {view.chunksRecorded > 0 ? (
         <Text style={styles.meta}>
           {view.chunksRecorded}{" "}
-          {view.chunksRecorded === 1 ? "trecho gravado" : "trechos gravados"}
+          {view.chunksRecorded === 1 ? "áudio gravado" : "áudios gravados"}
           {view.pendingUploads === 0 ? " · todos enviados" : ""}
         </Text>
       ) : null}

@@ -104,7 +104,7 @@ export function MicrophoneExplanationModal() {
             </Text>
             <Text style={styles.paragraph}>
               Quando você acionar o SOS, o ProtectHer pode gravar o som ao seu
-              redor e enviar para seus contatos de segurança um trecho a cada{" "}
+              redor e enviar para seus contatos de segurança um áudio a cada{" "}
               {seconds} segundos.
             </Text>
             <View style={styles.bullets}>
